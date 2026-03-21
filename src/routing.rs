@@ -22,6 +22,20 @@ pub async fn apply_all(clients: &[Client], gateways: &[Gateway], default_gw: &st
             add_rule_for_client(&client.ip, gw).await?;
         }
     }
+
+    // Fallback: LAN-Traffic ohne spezifisches Gateway → Default-Gateway-Table
+    // Ohne diese Regel würde unmarked LAN-Traffic via ppp0 (main table default) rausgehen.
+    if let Some(gw) = gateways.iter().find(|g| g.name == default_gw) {
+        let status = Command::new("ip")
+            .args(["rule", "add", "from", "172.16.0.0/12",
+                   "lookup", &gw.table_name, "priority", "1999"])
+            .status()
+            .await?;
+        if status.success() {
+            info!("ip rule add fallback: 172.16.0.0/12 → table {}", gw.table_name);
+        }
+    }
+
     Ok(())
 }
 
