@@ -5,7 +5,7 @@ use tracing::info;
 use crate::db::{Client, Gateway};
 use crate::nftables::build_ruleset;
 
-const SCRIPTS_DIR: &str = "/etc/stellwerk";
+const SCRIPTS_DIR: &str = "/home/stellwerk";
 
 /// Generate and write all persistence scripts
 pub async fn write_all(

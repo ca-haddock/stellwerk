@@ -6,8 +6,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStartPre=/bin/bash /etc/stellwerk/failsafe.sh
-ExecStart=/usr/local/bin/stellwerk --config /etc/stellwerk/config.toml
+ExecStartPre=/bin/bash /home/stellwerk/failsafe.sh
+ExecStart=/home/stellwerk/bin/stellwerk --config /home/stellwerk/config.toml
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

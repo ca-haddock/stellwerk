@@ -5,13 +5,12 @@
 set -euo pipefail
 
 BINARY_SRC="target/release/stellwerk"
-BINARY_DST="/usr/local/bin/stellwerk"
+INSTALL_DIR="/home/stellwerk"
+BINARY_DST="$INSTALL_DIR/bin/stellwerk"
 CONFIG_SRC="config/default.toml"
-CONFIG_DST="/etc/stellwerk/config.toml"
+CONFIG_DST="$INSTALL_DIR/config.toml"
 SERVICE_SRC="stellwerk.service"
 SERVICE_DST="/etc/systemd/system/stellwerk.service"
-CONFIG_DIR="/etc/stellwerk"
-DATA_DIR="/var/lib/stellwerk"
 
 # --- Checks ---
 
@@ -28,11 +27,11 @@ fi
 
 # --- Install ---
 
+echo "==> Erstelle Verzeichnisse"
+mkdir -p "$INSTALL_DIR/bin"
+
 echo "==> Installiere Binary nach $BINARY_DST"
 install -m 755 "$BINARY_SRC" "$BINARY_DST"
-
-echo "==> Erstelle Verzeichnisse"
-mkdir -p "$CONFIG_DIR" "$DATA_DIR"
 
 if [[ -f "$CONFIG_DST" ]]; then
     echo "==> Config existiert bereits, überspringe: $CONFIG_DST"

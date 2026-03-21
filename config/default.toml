@@ -2,7 +2,7 @@
 # Kopiere nach /etc/stellwerk/config.toml und passe an.
 
 [db]
-path = "/var/lib/stellwerk/stellwerk.db"
+path = "/home/stellwerk/stellwerk.db"
 
 [api]
 listen = "0.0.0.0:8080"
