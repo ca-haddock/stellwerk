@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{Html, IntoResponse, Json},
 };
 use serde::{Deserialize, Serialize};
@@ -126,6 +126,50 @@ pub async fn list_events(State(state): State<AppState>) -> Json<Value> {
         Ok(events) => Json(json!(events)),
         Err(e) => Json(json!({ "error": e.to_string() })),
     }
+}
+
+// --- Auth ---
+
+#[derive(Deserialize)]
+pub struct LoginBody {
+    pub username: String,
+    pub password: String,
+}
+
+pub async fn login(
+    State(state): State<AppState>,
+    Json(body): Json<LoginBody>,
+) -> impl IntoResponse {
+    if !state.auth_enabled {
+        return (StatusCode::OK, Json(json!({"ok": true}))).into_response();
+    }
+    let hash = crate::auth::hash_password(&body.password);
+    if body.username != state.username || hash != state.password_hash {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "Ungültige Zugangsdaten"}))).into_response();
+    }
+    let token = crate::auth::generate_token();
+    state.sessions.write().await.insert(token.clone());
+    let cookie = format!("session={}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400", token);
+    (
+        StatusCode::OK,
+        [(header::SET_COOKIE, cookie)],
+        Json(json!({"ok": true})),
+    ).into_response()
+}
+
+pub async fn logout(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+) -> impl IntoResponse {
+    if let Some(token) = crate::auth::extract_session_token(&headers) {
+        state.sessions.write().await.remove(&token);
+    }
+    let cookie = "session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0";
+    (
+        StatusCode::OK,
+        [(header::SET_COOKIE, cookie)],
+        Json(json!({"ok": true})),
+    ).into_response()
 }
 
 // --- Scan ---

@@ -52,18 +52,41 @@
   .gw-card .gw-iface { font-family: monospace; font-size: 0.8rem; color: #9ae6b4; }
   #toast { position: fixed; bottom: 24px; right: 24px; background: #2b6cb0; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
   #toast.show { opacity: 1; }
+  #login-overlay { display: none; position: fixed; inset: 0; background: #0f1117; z-index: 100; align-items: center; justify-content: center; }
+  #login-overlay.visible { display: flex; }
+  .login-box { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 12px; padding: 40px; width: 340px; }
+  .login-box h2 { color: #63b3ed; font-size: 1.3rem; margin-bottom: 24px; text-align: center; letter-spacing: 0.05em; }
+  .login-box label { display: block; font-size: 0.8rem; color: #a0aec0; margin-bottom: 4px; margin-top: 14px; }
+  .login-box input { width: 100%; background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; padding: 9px 12px; border-radius: 6px; font-size: 0.9rem; }
+  .login-box input:focus { outline: none; border-color: #63b3ed; }
+  .login-box .login-btn { margin-top: 22px; width: 100%; background: #2b6cb0; border: none; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; }
+  .login-box .login-btn:hover { background: #3182ce; }
+  .login-error { color: #fc8181; font-size: 0.82rem; margin-top: 10px; text-align: center; min-height: 18px; }
   .filter-row { display: flex; gap: 10px; align-items: center; }
   .active-badge { background: #1a3a2a; color: #68d391; }
   .inactive-badge { background: #2d1a1a; color: #fc8181; }
 </style>
 </head>
 <body>
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>&#9201; Stellwerk</h2>
+    <label>Benutzername</label>
+    <input type="text" id="login-user" autocomplete="username">
+    <label>Passwort</label>
+    <input type="password" id="login-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Anmelden</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
 <header>
   <h1>&#9201; Stellwerk</h1>
   <div class="status-bar">
     <span><span class="dot unknown" id="dot-ppp0"></span>ppp0</span>
     <span><span class="dot unknown" id="dot-gre"></span>GRE</span>
     <span id="last-check" style="color:#718096;font-size:0.78rem"></span>
+    <button class="btn" onclick="doLogout()" style="margin-left:12px;font-size:0.78rem;padding:4px 10px">Logout</button>
   </div>
 </header>
 <main>
@@ -112,13 +135,62 @@
 let clients = [];
 let gateways = [];
 
+function showLogin() {
+  document.getElementById('login-overlay').classList.add('visible');
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('login-user').focus();
+}
+
+function hideLogin() {
+  document.getElementById('login-overlay').classList.remove('visible');
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value;
+  const password = document.getElementById('login-pass').value;
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    if (r.ok) {
+      hideLogin();
+      document.getElementById('login-pass').value = '';
+      loadAll();
+    } else {
+      const d = await r.json();
+      document.getElementById('login-error').textContent = d.error || 'Fehler';
+    }
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Verbindungsfehler';
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', {method: 'POST'}).catch(()=>{});
+  clients = [];
+  gateways = [];
+  document.getElementById('client-table').innerHTML = '';
+  document.getElementById('gw-grid').innerHTML = '';
+  document.getElementById('events-list').innerHTML = '';
+  showLogin();
+}
+
 async function loadAll() {
   await Promise.all([loadStatus(), loadClients(), loadGateways(), loadEvents()]);
 }
 
+async function apiFetch(url, opts) {
+  const r = await fetch(url, opts);
+  if (r.status === 401) { showLogin(); return null; }
+  return r;
+}
+
 async function loadStatus() {
   try {
-    const r = await fetch('/api/status');
+    const r = await apiFetch('/api/status');
+    if (!r) return;
     const d = await r.json();
     document.getElementById('dot-ppp0').className = 'dot ' + (d.ppp0_up ? 'up' : 'down');
     document.getElementById('dot-gre').className = 'dot ' + (d.gre_up ? 'up' : 'down');
@@ -131,7 +203,8 @@ async function loadStatus() {
 
 async function loadClients() {
   try {
-    const r = await fetch('/api/clients');
+    const r = await apiFetch('/api/clients');
+    if (!r) return;
     clients = await r.json();
     renderClients();
   } catch(e) {}
@@ -139,7 +212,8 @@ async function loadClients() {
 
 async function loadGateways() {
   try {
-    const r = await fetch('/api/gateways');
+    const r = await apiFetch('/api/gateways');
+    if (!r) return;
     gateways = await r.json();
     renderGateways();
   } catch(e) {}
@@ -147,7 +221,8 @@ async function loadGateways() {
 
 async function loadEvents() {
   try {
-    const r = await fetch('/api/events');
+    const r = await apiFetch('/api/events');
+    if (!r) return;
     const events = await r.json();
     const el = document.getElementById('events-list');
     if (!events.length) { el.innerHTML = '<span style="color:#4a5568">Keine Ereignisse</span>'; return; }
@@ -229,7 +304,7 @@ function gatewayBadgeClass(gw) {
 
 async function setGateway(ip, gw) {
   try {
-    const r = await fetch(`/api/clients/${encodeURIComponent(ip)}/gateway`, {
+    const r = await apiFetch(`/api/clients/${encodeURIComponent(ip)}/gateway`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({gateway: gw})
@@ -258,7 +333,7 @@ async function setLabel(ip, label) {
 
 async function triggerScan() {
   try {
-    await fetch('/api/scan', {method: 'POST'});
+    await apiFetch('/api/scan', {method: 'POST'});
     toast('Scan gestartet...');
     setTimeout(loadAll, 3000);
   } catch(e) {}

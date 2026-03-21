@@ -9,6 +9,10 @@ pub struct Config {
     #[serde(default)]
     pub api: ApiConfig,
     #[serde(default)]
+    pub tls: TlsConfig,
+    #[serde(default)]
+    pub auth: AuthConfig,
+    #[serde(default)]
     pub monitoring: MonitoringConfig,
     #[serde(default)]
     pub homeassistant: HomeAssistantConfig,
@@ -41,7 +45,42 @@ pub struct ApiConfig {
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
-            listen: "0.0.0.0:8080".to_string(),
+            listen: "0.0.0.0:1443".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TlsConfig {
+    pub enabled: bool,
+    pub cert: String,
+    pub key: String,
+}
+
+impl Default for TlsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            cert: "/etc/certs/tatooine.cc/fullchain.cer".to_string(),
+            key: "/etc/certs/tatooine.cc/*.tatooine.cc.key".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AuthConfig {
+    pub enabled: bool,
+    pub username: String,
+    /// SHA-256 hash des Passworts: echo -n "passwort" | sha256sum
+    pub password_hash: String,
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            username: "admin".to_string(),
+            password_hash: String::new(),
         }
     }
 }
@@ -160,6 +199,8 @@ impl Default for Config {
         Self {
             db: DbConfig::default(),
             api: ApiConfig::default(),
+            tls: TlsConfig::default(),
+            auth: AuthConfig::default(),
             monitoring: MonitoringConfig::default(),
             homeassistant: HomeAssistantConfig::default(),
             influxdb: InfluxDbConfig::default(),

@@ -5,7 +5,18 @@
 path = "/home/stellwerk/stellwerk.db"
 
 [api]
-listen = "0.0.0.0:8080"
+listen = "0.0.0.0:1443"
+
+[tls]
+enabled = true
+cert = "/etc/certs/tatooine.cc/fullchain.cer"
+key = "/etc/certs/tatooine.cc/*.tatooine.cc.key"
+
+[auth]
+enabled = true
+username = "admin"
+# SHA-256 Hash des Passworts: echo -n "meinpasswort" | sha256sum | awk '{print $1}'
+password_hash = ""
 
 [monitoring]
 check_interval_secs = 30

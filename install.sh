@@ -52,7 +52,10 @@ else
     install -m 640 "$CONFIG_SRC" "$CONFIG_DST"
     echo ""
     echo "    !! Config bitte anpassen: $CONFIG_DST"
-    echo "       (HA-Token, InfluxDB, Subnets etc.)"
+    echo "       - TLS cert/key Pfade prüfen"
+    echo "       - Auth Passwort-Hash setzen:"
+    echo "         echo -n 'meinpasswort' | sha256sum | awk '{print \$1}'"
+    echo "       - HA-Token, InfluxDB etc."
     echo ""
 fi
 

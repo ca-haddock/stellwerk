@@ -1,4 +1,5 @@
 mod api;
+mod auth;
 mod config;
 mod db;
 mod discovery;
@@ -64,12 +65,19 @@ async fn main() -> Result<()> {
         None
     };
 
+    // Sessions für Auth
+    let sessions = auth::new_sessions();
+
     // Shared app state for API
     let app_state = api::AppState {
         pool: pool.clone(),
         status: status.clone(),
         default_gw: cfg.defaults.gateway.clone(),
         scan_tx: reapply_notify.clone(),
+        sessions,
+        auth_enabled: cfg.auth.enabled,
+        username: cfg.auth.username.clone(),
+        password_hash: cfg.auth.password_hash.clone(),
     };
 
     // Initial routing apply from DB
@@ -113,12 +121,24 @@ async fn main() -> Result<()> {
         }
     });
 
-    // HTTP API
+    // HTTP(S) API
     let router = api::build_router(app_state);
-    let listener = tokio::net::TcpListener::bind(&cfg.api.listen).await?;
-    info!("Stellwerk listening on http://{}", cfg.api.listen);
 
-    axum::serve(listener, router).await?;
+    if cfg.tls.enabled {
+        let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+            &cfg.tls.cert,
+            &cfg.tls.key,
+        ).await?;
+        let addr: std::net::SocketAddr = cfg.api.listen.parse()?;
+        info!("Stellwerk listening on https://{}", cfg.api.listen);
+        axum_server::bind_rustls(addr, tls_config)
+            .serve(router.into_make_service())
+            .await?;
+    } else {
+        let listener = tokio::net::TcpListener::bind(&cfg.api.listen).await?;
+        info!("Stellwerk listening on http://{}", cfg.api.listen);
+        axum::serve(listener, router).await?;
+    }
 
     Ok(())
 }
