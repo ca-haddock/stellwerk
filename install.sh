@@ -27,11 +27,23 @@ fi
 
 # --- Install ---
 
+echo "==> Erstelle System-User 'stellwerk'"
+if ! id stellwerk &>/dev/null; then
+    useradd --system --home-dir "$INSTALL_DIR" --create-home --shell /sbin/nologin stellwerk
+    echo "    User 'stellwerk' angelegt"
+else
+    echo "    User 'stellwerk' existiert bereits"
+fi
+
 echo "==> Erstelle Verzeichnisse"
 mkdir -p "$INSTALL_DIR/bin"
 
 echo "==> Installiere Binary nach $BINARY_DST"
 install -m 755 "$BINARY_SRC" "$BINARY_DST"
+
+echo "==> Setze Linux Capabilities (CAP_NET_ADMIN) auf Binary"
+# Ersetzt root-Rechte: nft und ip rule brauchen nur CAP_NET_ADMIN
+setcap cap_net_admin+eip "$BINARY_DST"
 
 if [[ -f "$CONFIG_DST" ]]; then
     echo "==> Config existiert bereits, überspringe: $CONFIG_DST"
@@ -43,6 +55,9 @@ else
     echo "       (HA-Token, InfluxDB, Subnets etc.)"
     echo ""
 fi
+
+echo "==> Setze Besitzer für $INSTALL_DIR"
+chown -R stellwerk:stellwerk "$INSTALL_DIR"
 
 echo "==> Installiere Systemd-Service"
 install -m 644 "$SERVICE_SRC" "$SERVICE_DST"
