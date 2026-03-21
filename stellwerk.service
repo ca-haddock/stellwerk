@@ -1,0 +1,21 @@
+[Unit]
+Description=Stellwerk Network Gateway Manager
+Documentation=https://github.com/local/stellwerk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash /etc/stellwerk/failsafe.sh
+ExecStart=/usr/local/bin/stellwerk --config /etc/stellwerk/config.toml
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stellwerk
+
+# Needs root for nft and ip rule
+User=root
+
+[Install]
+WantedBy=multi-user.target

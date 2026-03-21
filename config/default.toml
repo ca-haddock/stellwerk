@@ -1,0 +1,41 @@
+# Stellwerk - Beispiel-Konfiguration
+# Kopiere nach /etc/stellwerk/config.toml und passe an.
+
+[db]
+path = "/var/lib/stellwerk/stellwerk.db"
+
+[api]
+listen = "0.0.0.0:8080"
+
+[monitoring]
+check_interval_secs = 30
+ppp0_check_host = "8.8.8.8"
+gre_check_host = "1.1.1.1"
+
+[homeassistant]
+enabled = false
+url = "http://172.16.1.72:8123"
+token = "dein-long-lived-token-hier"
+starlink_entity = "switch.starlink_modem"
+
+[influxdb]
+enabled = false
+url = "http://localhost:8086"
+token = "dein-influxdb-token"
+bucket = "network"
+org = "home"
+
+[networks]
+scan_subnets = [
+  "172.16.0.0/22",
+  "172.16.4.0/24",
+  "172.16.5.0/24",
+  "172.16.8.0/24",
+  "172.16.9.0/24",
+  "172.16.10.0/24",
+  "172.16.11.0/24",
+]
+scan_interval_secs = 300
+
+[defaults]
+gateway = "gre_175"

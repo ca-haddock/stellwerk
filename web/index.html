@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stellwerk</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+  header { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.4rem; font-weight: 700; color: #63b3ed; letter-spacing: 0.05em; }
+  .status-bar { display: flex; gap: 20px; margin-left: auto; align-items: center; font-size: 0.85rem; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+  .dot.up { background: #48bb78; box-shadow: 0 0 6px #48bb78; }
+  .dot.down { background: #fc8181; box-shadow: 0 0 6px #fc8181; }
+  .dot.unknown { background: #a0aec0; }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+  .btn { background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+  .btn:hover { background: #4a5568; border-color: #63b3ed; }
+  .btn.primary { background: #2b6cb0; border-color: #3182ce; }
+  .btn.primary:hover { background: #3182ce; }
+  input[type=text] { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; width: 220px; }
+  input[type=text]:focus { outline: none; border-color: #63b3ed; }
+  .card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+  .card-title { padding: 14px 20px; border-bottom: 1px solid #2d3748; font-size: 0.9rem; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.08em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  thead th { background: #161b2a; color: #718096; font-weight: 600; text-align: left; padding: 10px 16px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  tbody tr { border-bottom: 1px solid #2d3748; transition: background 0.1s; }
+  tbody tr:hover { background: #232937; }
+  tbody td { padding: 10px 16px; }
+  .ip { font-family: monospace; color: #63b3ed; font-size: 0.9rem; }
+  .mac { font-family: monospace; color: #718096; font-size: 0.8rem; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge.gre { background: #2b4c7e; color: #90cdf4; }
+  .badge.vpn { background: #2d5016; color: #9ae6b4; }
+  .badge.ppp { background: #5a2d6b; color: #e9d8fd; }
+  .badge.other { background: #3d3717; color: #faf089; }
+  select { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 5px 8px; border-radius: 5px; font-size: 0.83rem; cursor: pointer; }
+  select:focus { outline: none; border-color: #63b3ed; }
+  .label-cell { cursor: pointer; }
+  .label-cell input { background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.83rem; width: 120px; }
+  .time-ago { color: #718096; font-size: 0.8rem; }
+  .events-list { padding: 12px 20px; font-family: monospace; font-size: 0.82rem; max-height: 260px; overflow-y: auto; }
+  .event-row { padding: 4px 0; color: #a0aec0; border-bottom: 1px solid #2d3748; }
+  .event-row .ev-time { color: #63b3ed; margin-right: 10px; }
+  .event-row .ev-name { color: #f6e05e; margin-right: 8px; font-weight: bold; }
+  .gw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px; }
+  .gw-card { background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 14px; }
+  .gw-card h3 { font-size: 0.85rem; font-weight: 700; color: #63b3ed; margin-bottom: 4px; }
+  .gw-card p { font-size: 0.78rem; color: #718096; }
+  .gw-card .gw-iface { font-family: monospace; font-size: 0.8rem; color: #9ae6b4; }
+  #toast { position: fixed; bottom: 24px; right: 24px; background: #2b6cb0; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  .filter-row { display: flex; gap: 10px; align-items: center; }
+  .active-badge { background: #1a3a2a; color: #68d391; }
+  .inactive-badge { background: #2d1a1a; color: #fc8181; }
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9201; Stellwerk</h1>
+  <div class="status-bar">
+    <span><span class="dot unknown" id="dot-ppp0"></span>ppp0</span>
+    <span><span class="dot unknown" id="dot-gre"></span>GRE</span>
+    <span id="last-check" style="color:#718096;font-size:0.78rem"></span>
+  </div>
+</header>
+<main>
+  <div class="toolbar">
+    <div class="filter-row">
+      <input type="text" id="search" placeholder="IP, MAC, Hostname filtern...">
+      <button class="btn primary" onclick="triggerScan()">&#128269; Scan</button>
+      <button class="btn" onclick="loadAll()">&#8635; Refresh</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer">
+      <input type="checkbox" id="show-inactive" onchange="renderClients()"> Inaktive anzeigen
+    </label>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Clients <span id="client-count" style="color:#63b3ed"></span></div>
+    <table>
+      <thead>
+        <tr>
+          <th>IP</th>
+          <th>MAC</th>
+          <th>Hostname / Label</th>
+          <th>Gateway</th>
+          <th>Zuletzt gesehen</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="client-table"></tbody>
+    </table>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="card">
+      <div class="card-title">Gateways</div>
+      <div class="gw-grid" id="gw-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Ereignisse</div>
+      <div class="events-list" id="events-list"></div>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+let clients = [];
+let gateways = [];
+
+async function loadAll() {
+  await Promise.all([loadStatus(), loadClients(), loadGateways(), loadEvents()]);
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    document.getElementById('dot-ppp0').className = 'dot ' + (d.ppp0_up ? 'up' : 'down');
+    document.getElementById('dot-gre').className = 'dot ' + (d.gre_up ? 'up' : 'down');
+    if (d.last_check) {
+      const ago = Math.round((Date.now()/1000 - d.last_check));
+      document.getElementById('last-check').textContent = `geprüft vor ${ago}s`;
+    }
+  } catch(e) {}
+}
+
+async function loadClients() {
+  try {
+    const r = await fetch('/api/clients');
+    clients = await r.json();
+    renderClients();
+  } catch(e) {}
+}
+
+async function loadGateways() {
+  try {
+    const r = await fetch('/api/gateways');
+    gateways = await r.json();
+    renderGateways();
+  } catch(e) {}
+}
+
+async function loadEvents() {
+  try {
+    const r = await fetch('/api/events');
+    const events = await r.json();
+    const el = document.getElementById('events-list');
+    if (!events.length) { el.innerHTML = '<span style="color:#4a5568">Keine Ereignisse</span>'; return; }
+    el.innerHTML = events.map(e => {
+      const t = new Date(e.ts * 1000).toLocaleTimeString('de');
+      return `<div class="event-row"><span class="ev-time">${t}</span><span class="ev-name">${e.event}</span>${e.detail||''}</div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+function renderClients() {
+  const query = document.getElementById('search').value.toLowerCase();
+  const showInactive = document.getElementById('show-inactive').checked;
+  const tbody = document.getElementById('client-table');
+  const gwOptions = gateways.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
+
+  let filtered = clients.filter(c => {
+    if (!showInactive && !c.active) return false;
+    if (!query) return true;
+    return (c.ip||'').includes(query) ||
+           (c.mac||'').toLowerCase().includes(query) ||
+           (c.hostname||'').toLowerCase().includes(query) ||
+           (c.label||'').toLowerCase().includes(query);
+  });
+
+  document.getElementById('client-count').textContent = `(${filtered.length}/${clients.length})`;
+
+  tbody.innerHTML = filtered.map(c => {
+    const ago = timeAgo(c.last_seen);
+    const gwBadgeClass = gatewayBadgeClass(c.gateway);
+    const statusBadge = c.active
+      ? '<span class="badge active-badge">aktiv</span>'
+      : '<span class="badge inactive-badge">inaktiv</span>';
+    const label = c.label ? `<span style="color:#e2e8f0">${esc(c.label)}</span>` : '';
+    const hostname = c.hostname ? `<span style="color:#a0aec0;font-size:0.8rem">${esc(c.hostname)}</span>` : '';
+    const nameCell = [label, hostname].filter(Boolean).join('<br>') || '<span style="color:#4a5568">–</span>';
+
+    const selOptions = gateways.map(g =>
+      `<option value="${g.name}" ${g.name===c.gateway?'selected':''}>${g.name}</option>`
+    ).join('');
+
+    return `<tr>
+      <td class="ip">${esc(c.ip)}</td>
+      <td class="mac">${esc(c.mac||'–')}</td>
+      <td>
+        ${nameCell}
+        <div style="margin-top:4px">
+          <input type="text" placeholder="Label..." value="${esc(c.label||'')}"
+            style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:0.78rem;width:110px"
+            onblur="setLabel('${esc(c.ip)}', this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+        </div>
+      </td>
+      <td>
+        <select onchange="setGateway('${esc(c.ip)}', this.value)">${selOptions}</select>
+      </td>
+      <td class="time-ago">${ago}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderGateways() {
+  const el = document.getElementById('gw-grid');
+  el.innerHTML = gateways.map(g => `
+    <div class="gw-card">
+      <h3>${esc(g.name)}</h3>
+      <div class="gw-iface">${esc(g.interface)}</div>
+      <p>${esc(g.description||'')} <span style="color:#4a5568">mark:${g.mark}</span></p>
+    </div>
+  `).join('');
+}
+
+function gatewayBadgeClass(gw) {
+  if (gw.startsWith('gre')) return 'gre';
+  if (gw.startsWith('vpn') || gw === 'webgate' || gw === 'stargate' || gw === 'buda') return 'vpn';
+  if (gw === 'ppp0') return 'ppp';
+  return 'other';
+}
+
+async function setGateway(ip, gw) {
+  try {
+    const r = await fetch(`/api/clients/${encodeURIComponent(ip)}/gateway`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({gateway: gw})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Gateway fuer ${ip} → ${gw}`);
+      await loadClients();
+    } else {
+      toast('Fehler: ' + (d.error||'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+async function setLabel(ip, label) {
+  try {
+    await fetch(`/api/clients/${encodeURIComponent(ip)}/label`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({label})
+    });
+    const idx = clients.findIndex(c => c.ip === ip);
+    if (idx >= 0) clients[idx].label = label;
+  } catch(e) {}
+}
+
+async function triggerScan() {
+  try {
+    await fetch('/api/scan', {method: 'POST'});
+    toast('Scan gestartet...');
+    setTimeout(loadAll, 3000);
+  } catch(e) {}
+}
+
+function timeAgo(ts) {
+  const diff = Math.round(Date.now()/1000 - ts);
+  if (diff < 60) return `vor ${diff}s`;
+  if (diff < 3600) return `vor ${Math.round(diff/60)}m`;
+  if (diff < 86400) return `vor ${Math.round(diff/3600)}h`;
+  return `vor ${Math.round(diff/86400)}d`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, error=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = error ? '#c53030' : '#2b6cb0';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+document.getElementById('search').addEventListener('input', renderClients);
+
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>
