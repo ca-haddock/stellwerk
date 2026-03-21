@@ -10,12 +10,16 @@ mod routing;
 mod scripts;
 mod traffic;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use hyper_util::server::conn::auto::Builder as HyperBuilder;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Notify;
 use tokio::time::{interval, Duration};
+use tokio_rustls::rustls;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 
@@ -125,15 +129,7 @@ async fn main() -> Result<()> {
     let router = api::build_router(app_state);
 
     if cfg.tls.enabled {
-        let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
-            &cfg.tls.cert,
-            &cfg.tls.key,
-        ).await?;
-        let addr: std::net::SocketAddr = cfg.api.listen.parse()?;
-        info!("Stellwerk listening on https://{}", cfg.api.listen);
-        axum_server::bind_rustls(addr, tls_config)
-            .serve(router.into_make_service())
-            .await?;
+        serve_tls(router, &cfg.tls, &cfg.api.listen).await?;
     } else {
         let listener = tokio::net::TcpListener::bind(&cfg.api.listen).await?;
         info!("Stellwerk listening on http://{}", cfg.api.listen);
@@ -207,4 +203,60 @@ async fn run_discovery_loop(
 
         ticker.tick().await;
     }
+}
+
+/// TLS-Server mit tokio-rustls + hyper
+async fn serve_tls(app: axum::Router, tls_cfg: &config::TlsConfig, listen: &str) -> Result<()> {
+    let certs = load_certs(&tls_cfg.cert)?;
+    let key = load_private_key(&tls_cfg.key)?;
+
+    let tls_config = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .context("TLS Konfiguration fehlgeschlagen")?;
+
+    let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(tls_config));
+    let listener = tokio::net::TcpListener::bind(listen).await?;
+    info!("Stellwerk listening on https://{}", listen);
+
+    loop {
+        let (stream, _) = listener.accept().await?;
+        let acceptor = acceptor.clone();
+        let app = app.clone();
+
+        tokio::spawn(async move {
+            let tls_stream = match acceptor.accept(stream).await {
+                Ok(s) => s,
+                Err(e) => { warn!("TLS Handshake fehlgeschlagen: {}", e); return; }
+            };
+            let io = TokioIo::new(tls_stream);
+            let svc = hyper::service::service_fn(move |req: hyper::Request<Incoming>| {
+                let mut app = app.clone();
+                async move {
+                    let req = req.map(axum::body::Body::new);
+                    tower::Service::call(&mut app, req).await
+                }
+            });
+            if let Err(e) = HyperBuilder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(io, svc)
+                .await
+            {
+                warn!("Verbindungsfehler: {}", e);
+            }
+        });
+    }
+}
+
+fn load_certs(path: &str) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>> {
+    let f = std::fs::File::open(path).with_context(|| format!("Zertifikat nicht gefunden: {}", path))?;
+    rustls_pemfile::certs(&mut std::io::BufReader::new(f))
+        .collect::<Result<Vec<_>, _>>()
+        .context("Zertifikat konnte nicht geparst werden")
+}
+
+fn load_private_key(path: &str) -> Result<rustls::pki_types::PrivateKeyDer<'static>> {
+    let f = std::fs::File::open(path).with_context(|| format!("Privater Schlüssel nicht gefunden: {}", path))?;
+    rustls_pemfile::private_key(&mut std::io::BufReader::new(f))
+        .context("Schlüssel konnte nicht gelesen werden")?
+        .ok_or_else(|| anyhow::anyhow!("Kein privater Schlüssel in {}", path))
 }
