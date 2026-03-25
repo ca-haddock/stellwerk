@@ -11,11 +11,22 @@ CURRENT=$(grep '^version = ' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 PATCH=$(( PATCH + 1 ))
 NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+# Bei Build-Fehler: Version zurücksetzen
+restore_version() {
+    echo "Build fehlgeschlagen – Version zurückgesetzt auf ${CURRENT}" >&2
+    sed -i "s/^version = \"${NEW_VERSION}\"/version = \"${CURRENT}\"/" Cargo.toml
+}
+trap restore_version ERR
+
 sed -i "s/^version = \"${CURRENT}\"/version = \"${NEW_VERSION}\"/" Cargo.toml
 echo "Version: ${CURRENT} → ${NEW_VERSION}"
 
 # Release-Build
 sudo -u claude /home/claude/.cargo/bin/cargo build --release
+
+# Build erfolgreich – Trap aufheben
+trap - ERR
 
 install -m 755 target/release/stellwerk /home/stellwerk/bin/stellwerk
 # Keine File-Capabilities – AmbientCapabilities im systemd-Service übernimmt das.
