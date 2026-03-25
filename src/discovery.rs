@@ -4,6 +4,42 @@ use std::net::Ipv4Addr;
 use tokio::process::Command;
 use tracing::{debug, info};
 
+/// Read the NDP (IPv6 neighbour) table and return MAC → IPv6 address mapping.
+/// Only returns global/unique-local addresses (skips fe80:: link-local).
+pub async fn read_ndp_table() -> Result<HashMap<String, String>> {
+    let output = Command::new("ip")
+        .args(["-6", "neigh", "show"])
+        .output()
+        .await?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut mac_to_ipv6: HashMap<String, String> = HashMap::new();
+
+    for line in stdout.lines() {
+        // Format: "2a02:8108:... dev enp3s0 lladdr 3c:61:05:d1:6e:ec STALE"
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 5 {
+            continue;
+        }
+        let ip6 = parts[0];
+        // Skip link-local (fe80::) — not useful for display
+        if ip6.starts_with("fe80") {
+            continue;
+        }
+        // Skip FAILED/INCOMPLETE
+        let lladdr_idx = match parts.iter().position(|&p| p == "lladdr") {
+            Some(i) => i,
+            None => continue,
+        };
+        let mac = parts[lladdr_idx + 1].to_lowercase();
+        // Prefer keeping the first (most stable) address per MAC
+        mac_to_ipv6.entry(mac).or_insert_with(|| ip6.to_string());
+    }
+
+    debug!("NDP table: {} IPv6 addresses mapped", mac_to_ipv6.len());
+    Ok(mac_to_ipv6)
+}
+
 #[derive(Debug, Clone)]
 pub struct DiscoveredHost {
     pub ip: String,
@@ -130,4 +166,14 @@ pub async fn discover_all(subnets: &[String]) -> Result<Vec<DiscoveredHost>> {
 
     info!("Discovery complete: {} unique hosts", hosts.len());
     Ok(hosts)
+}
+
+/// Leitet aus einer Client-IP das /24-Subnetz ab (z.B. "172.16.1.5" → Some("172.16.1.0/24"))
+pub fn ip_to_subnet_cidr(ip: &str) -> Option<String> {
+    let parts: Vec<&str> = ip.split('.').collect();
+    if parts.len() == 4 {
+        Some(format!("{}.{}.{}.0/24", parts[0], parts[1], parts[2]))
+    } else {
+        None
+    }
 }

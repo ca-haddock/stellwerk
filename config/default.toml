@@ -6,6 +6,8 @@ path = "/home/stellwerk/stellwerk.db"
 
 [api]
 listen = "0.0.0.0:1443"
+# Optionaler zweiter HTTP-Listener ohne TLS (z.B. für Kiosk-Zugang per TV/Tablet im LAN)
+listen_http = "0.0.0.0:8080"
 
 [tls]
 enabled = true
@@ -22,6 +24,10 @@ password_hash = ""
 check_interval_secs = 30
 ppp0_check_host = "8.8.8.8"
 gre_check_host = "1.1.1.1"
+# GRE→ppp0 Failover: bei GRE-Ausfall Default-Route in Client-Tabellen auf ppp0 umschalten
+gre_failover_enabled = false
+gre_interface = "gre_fiber"
+gre_nexthop = "172.16.10.1"
 
 [homeassistant]
 enabled = false
@@ -50,3 +56,20 @@ scan_interval_secs = 300
 
 [defaults]
 gateway = "gre_175"
+
+[dns]
+# Unbound-Upstream via diesen Gateway routen (DNS-Leak-Schutz für Router selbst)
+# gateway = "vpnde"
+unbound_user = "unbound"
+
+# Benannte DNS-Server für das UI – erscheinen als Dropdown statt Freitext
+[dns.servers]
+local      = "172.16.3.254"
+google     = "8.8.8.8"
+cloudflare = "1.1.1.1"
+dnswatch   = "84.200.69.40"
+
+# Mullvad WireGuard VPN (optional)
+# Nur die Account-Nummer eintragen – Key wird über das UI generiert und registriert.
+# [mullvad]
+# account = "1234567890123456"

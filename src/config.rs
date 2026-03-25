@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -22,6 +23,10 @@ pub struct Config {
     pub networks: NetworksConfig,
     #[serde(default)]
     pub defaults: DefaultsConfig,
+    #[serde(default)]
+    pub dns: DnsConfig,
+    #[serde(default)]
+    pub mullvad: Option<MullvadConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -40,12 +45,16 @@ impl Default for DbConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ApiConfig {
     pub listen: String,
+    /// Optionaler zweiter HTTP-Listener (ohne TLS), z.B. für Kiosk-Zugang im LAN
+    #[serde(default)]
+    pub listen_http: Option<String>,
 }
 
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
             listen: "0.0.0.0:1443".to_string(),
+            listen_http: None,
         }
     }
 }
@@ -73,6 +82,14 @@ pub struct AuthConfig {
     pub username: String,
     /// SHA-256 hash des Passworts: echo -n "passwort" | sha256sum
     pub password_hash: String,
+    /// Viewer-Account (read-only); leer = deaktiviert
+    #[serde(default)]
+    pub viewer_username: String,
+    #[serde(default)]
+    pub viewer_password_hash: String,
+    /// Kiosk-Token für passwortlosen Autostart (z.B. Chromium Kiosk-Modus)
+    #[serde(default)]
+    pub kiosk_token: String,
 }
 
 impl Default for AuthConfig {
@@ -81,6 +98,9 @@ impl Default for AuthConfig {
             enabled: false,
             username: "admin".to_string(),
             password_hash: String::new(),
+            viewer_username: String::new(),
+            viewer_password_hash: String::new(),
+            kiosk_token: String::new(),
         }
     }
 }
@@ -90,6 +110,20 @@ pub struct MonitoringConfig {
     pub check_interval_secs: u64,
     pub ppp0_check_host: String,
     pub gre_check_host: String,
+    /// GRE→ppp0 Failover: bei GRE-Ausfall Default-Route in GRE-Tabellen auf ppp0 umschalten
+    #[serde(default)]
+    pub gre_failover_enabled: bool,
+    /// Interface das als GRE gilt (default: "gre_fiber")
+    #[serde(default = "MonitoringConfig::default_gre_interface")]
+    pub gre_interface: String,
+    /// Nexthop-IP für GRE-Default-Route (default: "172.16.10.1")
+    #[serde(default = "MonitoringConfig::default_gre_nexthop")]
+    pub gre_nexthop: String,
+}
+
+impl MonitoringConfig {
+    fn default_gre_interface() -> String { "gre_fiber".to_string() }
+    fn default_gre_nexthop() -> String { "172.16.10.1".to_string() }
 }
 
 impl Default for MonitoringConfig {
@@ -98,6 +132,9 @@ impl Default for MonitoringConfig {
             check_interval_secs: 30,
             ppp0_check_host: "8.8.8.8".to_string(),
             gre_check_host: "1.1.1.1".to_string(),
+            gre_failover_enabled: false,
+            gre_interface: "gre_fiber".to_string(),
+            gre_nexthop: "172.16.10.1".to_string(),
         }
     }
 }
@@ -178,6 +215,56 @@ impl Default for DefaultsConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct DnsConfig {
+    /// Gateway-Name für Unbound-Upstream-Queries (z.B. "vpnde").
+    /// None = kein spezielles DNS-Routing (Router-IP wird bei DNS-Leak-Tests sichtbar).
+    pub gateway: Option<String>,
+    /// Linux-Username unter dem Unbound läuft (default: "unbound").
+    #[serde(default = "DnsConfig::default_user")]
+    pub unbound_user: String,
+    /// DNS-Leak-Schutz: pro Gateway den DNS-Server festlegen.
+    /// Überschreibt beim Start die DB-Werte.
+    /// Beispiel: { vpnde = "1.1.1.1", vpnus = "1.0.0.1" }
+    #[serde(default)]
+    pub gateway_dns: HashMap<String, String>,
+    /// Benannte DNS-Server für das UI (name → IP).
+    /// Beispiel: { local = "172.16.3.254", google = "8.8.8.8" }
+    #[serde(default)]
+    pub servers: HashMap<String, String>,
+}
+
+impl DnsConfig {
+    fn default_user() -> String {
+        "unbound".to_string()
+    }
+}
+
+impl Default for DnsConfig {
+    fn default() -> Self {
+        Self {
+            gateway: None,
+            unbound_user: "unbound".to_string(),
+            gateway_dns: HashMap::new(),
+            servers: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MullvadConfig {
+    /// Mullvad Account-Nummer (16 Ziffern)
+    pub account: String,
+}
+
+impl Default for MullvadConfig {
+    fn default() -> Self {
+        Self {
+            account: String::new(),
+        }
+    }
+}
+
 impl Config {
     pub fn load(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
@@ -206,6 +293,8 @@ impl Default for Config {
             influxdb: InfluxDbConfig::default(),
             networks: NetworksConfig::default(),
             defaults: DefaultsConfig::default(),
+            dns: DnsConfig::default(),
+            mullvad: None,
         }
     }
 }

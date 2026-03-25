@@ -7,67 +7,172 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
-  header { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 1.4rem; font-weight: 700; color: #63b3ed; letter-spacing: 0.05em; }
-  .status-bar { display: flex; gap: 20px; margin-left: auto; align-items: center; font-size: 0.85rem; }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-  .dot.up { background: #48bb78; box-shadow: 0 0 6px #48bb78; }
-  .dot.down { background: #fc8181; box-shadow: 0 0 6px #fc8181; }
-  .dot.unknown { background: #a0aec0; }
-  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
-  .toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
-  .btn { background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+
+  header { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.3rem; font-weight: 700; color: #63b3ed; letter-spacing: 0.05em; }
+  .status-bar { display: flex; gap: 16px; margin-left: auto; align-items: center; font-size: 0.82rem; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+  .dot.up { background: #48bb78; box-shadow: 0 0 5px #48bb78; }
+  .dot.down { background: #fc8181; box-shadow: 0 0 5px #fc8181; }
+  .dot.unknown { background: #4a5568; }
+
+  /* Tab navigation */
+  .tab-nav { background: #1a1f2e; border-bottom: 1px solid #2d3748; padding: 0 24px; display: flex; gap: 0; }
+  .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: #718096; padding: 12px 18px; cursor: pointer; font-size: 0.88rem; font-weight: 500; transition: all 0.15s; margin-bottom: -1px; }
+  .tab-btn:hover { color: #a0aec0; }
+  .tab-btn.active { color: #63b3ed; border-bottom-color: #63b3ed; }
+
+  main { padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 18px; align-items: center; flex-wrap: wrap; }
+  .btn { background: #2d3748; border: 1px solid #4a5568; color: #e2e8f0; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.83rem; transition: all 0.15s; }
   .btn:hover { background: #4a5568; border-color: #63b3ed; }
   .btn.primary { background: #2b6cb0; border-color: #3182ce; }
   .btn.primary:hover { background: #3182ce; }
-  input[type=text] { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; width: 220px; }
+  .btn.active { background: #1a365d; border-color: #63b3ed; color: #63b3ed; }
+
+  input[type=text] { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 7px 11px; border-radius: 6px; font-size: 0.83rem; }
   input[type=text]:focus { outline: none; border-color: #63b3ed; }
-  .card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
-  .card-title { padding: 14px 20px; border-bottom: 1px solid #2d3748; font-size: 0.9rem; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.08em; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-  thead th { background: #161b2a; color: #718096; font-weight: 600; text-align: left; padding: 10px 16px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
-  tbody tr { border-bottom: 1px solid #2d3748; transition: background 0.1s; }
-  tbody tr:hover { background: #232937; }
-  tbody td { padding: 10px 16px; }
-  .ip { font-family: monospace; color: #63b3ed; font-size: 0.9rem; }
-  .mac { font-family: monospace; color: #718096; font-size: 0.8rem; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-  .badge.gre { background: #2b4c7e; color: #90cdf4; }
-  .badge.vpn { background: #2d5016; color: #9ae6b4; }
-  .badge.ppp { background: #5a2d6b; color: #e9d8fd; }
-  .badge.other { background: #3d3717; color: #faf089; }
-  select { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 5px 8px; border-radius: 5px; font-size: 0.83rem; cursor: pointer; }
+
+  select { background: #1a1f2e; border: 1px solid #4a5568; color: #e2e8f0; padding: 4px 7px; border-radius: 5px; font-size: 0.82rem; cursor: pointer; }
   select:focus { outline: none; border-color: #63b3ed; }
-  .label-cell { cursor: pointer; }
-  .label-cell input { background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.83rem; width: 120px; }
-  .time-ago { color: #718096; font-size: 0.8rem; }
-  .events-list { padding: 12px 20px; font-family: monospace; font-size: 0.82rem; max-height: 260px; overflow-y: auto; }
-  .event-row { padding: 4px 0; color: #a0aec0; border-bottom: 1px solid #2d3748; }
-  .event-row .ev-time { color: #63b3ed; margin-right: 10px; }
-  .event-row .ev-name { color: #f6e05e; margin-right: 8px; font-weight: bold; }
-  .gw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 16px; }
-  .gw-card { background: #0f1117; border: 1px solid #2d3748; border-radius: 8px; padding: 12px 14px; }
-  .gw-card h3 { font-size: 0.85rem; font-weight: 700; color: #63b3ed; margin-bottom: 4px; }
-  .gw-card p { font-size: 0.78rem; color: #718096; }
-  .gw-card .gw-iface { font-family: monospace; font-size: 0.8rem; color: #9ae6b4; }
-  #toast { position: fixed; bottom: 24px; right: 24px; background: #2b6cb0; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-  #toast.show { opacity: 1; }
-  #login-overlay { display: none; position: fixed; inset: 0; background: #0f1117; z-index: 100; align-items: center; justify-content: center; }
-  #login-overlay.visible { display: flex; }
-  .login-box { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 12px; padding: 40px; width: 340px; }
-  .login-box h2 { color: #63b3ed; font-size: 1.3rem; margin-bottom: 24px; text-align: center; letter-spacing: 0.05em; }
-  .login-box label { display: block; font-size: 0.8rem; color: #a0aec0; margin-bottom: 4px; margin-top: 14px; }
-  .login-box input { width: 100%; background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; padding: 9px 12px; border-radius: 6px; font-size: 0.9rem; }
-  .login-box input:focus { outline: none; border-color: #63b3ed; }
-  .login-box .login-btn { margin-top: 22px; width: 100%; background: #2b6cb0; border: none; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.95rem; cursor: pointer; }
-  .login-box .login-btn:hover { background: #3182ce; }
-  .login-error { color: #fc8181; font-size: 0.82rem; margin-top: 10px; text-align: center; min-height: 18px; }
-  .filter-row { display: flex; gap: 10px; align-items: center; }
+
+  /* Gateway sections */
+  .gw-section { margin-bottom: 16px; border: 1px solid #2d3748; border-radius: 10px; overflow: hidden; }
+  .gw-section-header {
+    background: #1a1f2e; padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+    border-bottom: 1px solid #2d3748; user-select: none;
+  }
+  .gw-section-header:hover { background: #232937; }
+  .gw-section-header .gw-title { font-weight: 700; font-size: 0.95rem; color: #63b3ed; }
+  .gw-section-header .gw-iface { font-family: monospace; font-size: 0.8rem; color: #9ae6b4; }
+  .gw-section-header .gw-desc { font-size: 0.8rem; color: #718096; flex: 1; }
+  .gw-section-header .gw-count { font-size: 0.78rem; color: #a0aec0; background: #2d3748; padding: 2px 8px; border-radius: 12px; }
+  .gw-section-header .gw-traffic { font-size: 0.78rem; color: #68d391; }
+  .toggle-arrow { color: #4a5568; font-size: 0.8rem; transition: transform 0.2s; }
+  .gw-section.collapsed .toggle-arrow { transform: rotate(-90deg); }
+  .gw-section.collapsed .gw-body { display: none; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  thead th { background: #161b2a; color: #718096; font-weight: 600; text-align: left; padding: 8px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  tbody tr { border-bottom: 1px solid #1e2535; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #1e2535; }
+  tbody td { padding: 8px 14px; }
+
+  .ip { font-family: monospace; color: #63b3ed; font-size: 0.88rem; }
+  .ip6 { font-family: monospace; color: #76e4f7; font-size: 0.72rem; opacity: 0.75; }
+  .mac { font-family: monospace; color: #4a5568; font-size: 0.77rem; }
+
+  /* Badges */
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+  .subnet-badge { background: #1a2a3a; color: #63b3ed; font-family: monospace; border: 1px solid #2d4a6a; }
   .active-badge { background: #1a3a2a; color: #68d391; }
   .inactive-badge { background: #2d1a1a; color: #fc8181; }
+  .group-tag { background: #2d2a1a; color: #f6e05e; border: 1px solid #4a4520; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .intern-badge { background: #2d1a2d; color: #e879f9; border: 1px solid #6b21a8; font-size: 0.7rem; }
+
+  /* Editable inline fields */
+  .editable { cursor: pointer; }
+  .editable:hover { text-decoration: underline dotted #4a5568; }
+  .inline-input {
+    background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0;
+    padding: 2px 6px; border-radius: 4px; font-size: 0.82rem;
+    width: 100px;
+  }
+  .inline-input:focus { outline: none; border-color: #63b3ed; }
+
+  /* Traffic */
+  .traffic-in { color: #68d391; }
+  .traffic-out { color: #fc8181; }
+  .traffic-cell { white-space: nowrap; font-size: 0.8rem; }
+  .traffic-intern { color: #76e4b8; }
+  .traffic-extern { color: #90cdf4; }
+  .traffic-label { color: #718096; font-size: 0.7rem; margin-right: 1px; }
+
+  /* Time */
+  .time-ago { color: #718096; font-size: 0.78rem; white-space: nowrap; }
+
+  /* Cards */
+  .card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; overflow: hidden; }
+  .card-title { padding: 11px 16px; border-bottom: 1px solid #2d3748; font-size: 0.82rem; font-weight: 600; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* Traffic tab */
+  .traffic-events-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .events-list { padding: 10px 16px; font-family: monospace; font-size: 0.8rem; max-height: 500px; overflow-y: auto; }
+  .event-row { padding: 3px 0; color: #a0aec0; border-bottom: 1px solid #1e2535; }
+  .event-row .ev-time { color: #63b3ed; margin-right: 8px; }
+  .event-row .ev-name { color: #f6e05e; margin-right: 6px; font-weight: bold; }
+
+  .traffic-summary { padding: 10px 16px; max-height: 500px; overflow-y: auto; }
+  .ts-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #1e2535; font-size: 0.8rem; }
+  .ts-ip { font-family: monospace; color: #63b3ed; width: 110px; flex-shrink: 0; }
+  .ts-label { color: #a0aec0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ts-in { min-width: 110px; text-align: right; }
+  .ts-out { min-width: 110px; text-align: right; }
+
+  /* Networks tab */
+  .net-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.83rem; }
+  .net-toggle input[type=checkbox] { width: 16px; height: 16px; accent-color: #9f7aea; cursor: pointer; }
+  .net-hint { color: #4a5568; font-size: 0.75rem; margin-top: 2px; }
+
+  /* Interfaces tab */
+  .role-toggle { display: flex; border: 1px solid #4a5568; border-radius: 6px; overflow: hidden; }
+  .role-btn { background: none; border: none; color: #718096; padding: 5px 12px; cursor: pointer; font-size: 0.78rem; font-weight: 500; transition: all 0.15s; }
+  .role-btn.active-intern { background: #1a3a2a; color: #68d391; }
+  .role-btn.active-extern { background: #1a2a3a; color: #63b3ed; }
+  .role-btn:not([class*=active]):hover { background: #2d3748; color: #a0aec0; }
+  .iface-enabled { display: flex; align-items: center; gap: 6px; }
+  .toggle-switch { position: relative; width: 36px; height: 20px; cursor: pointer; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: #2d3748; border-radius: 20px; transition: 0.2s; }
+  .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #718096; border-radius: 50%; transition: 0.2s; }
+  .toggle-switch input:checked + .toggle-slider { background: #276749; }
+  .toggle-switch input:checked + .toggle-slider:before { background: #68d391; transform: translateX(16px); }
+  .iface-disabled { opacity: 0.45; }
+  .gw-list { font-family: monospace; font-size: 0.76rem; color: #9ae6b4; }
+
+  /* Mullvad tab */
+  .mullvad-card { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .mullvad-conn { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1e2535; }
+  .mullvad-conn:last-child { border-bottom: none; }
+  .mullvad-flag { font-size: 1.1rem; }
+  .mullvad-cc { font-family: monospace; font-size: 0.9rem; color: #9ae6b4; font-weight: 700; }
+  .mullvad-desc { flex: 1; font-size: 0.82rem; color: #a0aec0; }
+  .btn.danger { background: #742a2a; border-color: #9b2c2c; color: #fc8181; }
+  .btn.danger:hover { background: #9b2c2c; }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 20px; right: 20px; background: #2b6cb0; color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 0.88rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+  #toast.show { opacity: 1; }
+
+  /* Login */
+  #login-overlay { display: none; position: fixed; inset: 0; background: #0f1117ee; z-index: 100; align-items: center; justify-content: center; }
+  #login-overlay.visible { display: flex; }
+  .login-box { background: #1a1f2e; border: 1px solid #2d3748; border-radius: 12px; padding: 36px; width: 320px; }
+  .login-box h2 { color: #63b3ed; font-size: 1.2rem; margin-bottom: 20px; text-align: center; }
+  .login-box label { display: block; font-size: 0.78rem; color: #a0aec0; margin-bottom: 4px; margin-top: 12px; }
+  .login-box input { width: 100%; background: #0f1117; border: 1px solid #4a5568; color: #e2e8f0; padding: 8px 10px; border-radius: 6px; font-size: 0.88rem; }
+  .login-box input:focus { outline: none; border-color: #63b3ed; }
+  .login-box .login-btn { margin-top: 18px; width: 100%; background: #2b6cb0; border: none; color: #fff; padding: 9px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; }
+  .login-box .login-btn:hover { background: #3182ce; }
+  .login-error { color: #fc8181; font-size: 0.8rem; margin-top: 8px; text-align: center; min-height: 16px; }
+
+  /* No-clients placeholder */
+  .empty-section { padding: 12px 16px; color: #4a5568; font-size: 0.83rem; font-style: italic; }
+
+  /* DNS-Leak-Schutz Badge */
+  .dns-badge { font-size: 0.72rem; font-family: monospace; background: #1a2d1a; color: #68d391; border: 1px solid #276749; border-radius: 4px; padding: 1px 6px; cursor: pointer; white-space: nowrap; }
+  .dns-badge.no-dns { background: #2d1a1a; color: #fc8181; border-color: #742a2a; }
+  .dns-badge:hover { filter: brightness(1.2); }
+  .dns-input { background: #0f1117; border: 1px solid #2d3748; color: #68d391; padding: 2px 5px; border-radius: 4px; font-size: 0.75rem; width: 85px; font-family: monospace; }
+  .dns-input:focus { outline: none; border-color: #68d391; }
+  .dns-input::placeholder { color: #2d5a40; }
 </style>
 </head>
 <body>
+
 <div id="login-overlay">
   <div class="login-box">
     <h2>&#9201; Stellwerk</h2>
@@ -81,51 +186,170 @@
 </div>
 
 <header>
-  <h1>&#9201; Stellwerk</h1>
+  <h1>&#9201; Stellwerk <span id="version-badge" style="font-size:0.65rem;font-weight:400;color:#4a5568"></span></h1>
   <div class="status-bar">
-    <span><span class="dot unknown" id="dot-ppp0"></span>ppp0</span>
-    <span><span class="dot unknown" id="dot-gre"></span>GRE</span>
-    <span id="last-check" style="color:#718096;font-size:0.78rem"></span>
-    <button class="btn" onclick="doLogout()" style="margin-left:12px;font-size:0.78rem;padding:4px 10px">Logout</button>
+    <span id="last-check" style="color:#4a5568;font-size:0.76rem"></span>
+    <span id="viewer-badge" style="display:none;font-size:0.72rem;color:#f6ad55;border:1px solid #f6ad55;border-radius:4px;padding:2px 7px">read-only</span>
+    <button class="btn" onclick="doLogout()" style="font-size:0.76rem;padding:4px 10px">Logout</button>
   </div>
 </header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" id="tab-btn-clients" onclick="showTab('clients')">Clients</button>
+  <button class="tab-btn" id="tab-btn-traffic" onclick="showTab('traffic')">Traffic &amp; Ereignisse</button>
+  <button class="tab-btn" id="tab-btn-netze" onclick="showTab('netze')">Netze</button>
+  <button class="tab-btn" id="tab-btn-ifaces" onclick="showTab('ifaces')">Interfaces</button>
+  <button class="tab-btn" id="tab-btn-mullvad" onclick="showTab('mullvad')">Mullvad</button>
+  <button class="tab-btn" id="tab-btn-status" onclick="showTab('status')">Status</button>
+</nav>
+
 <main>
-  <div class="toolbar">
-    <div class="filter-row">
-      <input type="text" id="search" placeholder="IP, MAC, Hostname filtern...">
-      <button class="btn primary" onclick="triggerScan()">&#128269; Scan</button>
+  <!-- Tab: Clients -->
+  <div id="tab-clients">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="IP, Hostname, Label, Gruppe..." style="width:240px" oninput="renderAll()">
+      <button class="btn primary" id="btn-scan" onclick="triggerScan()">&#128269; Scan</button>
       <button class="btn" onclick="loadAll()">&#8635; Refresh</button>
+      <div style="width:1px;background:#2d3748;height:20px;margin:0 4px"></div>
+      <button class="btn" id="btn-view-gw" onclick="setView('gateway')" title="Nach Gateway gruppieren">Nach Gateway</button>
+      <button class="btn" id="btn-view-grp" onclick="setView('group')" title="Nach Gruppe gruppieren">Nach Gruppe</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:0.83rem">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" id="show-inactive" onchange="renderAll()"> Inaktive
+        </label>
+        <span id="client-count" style="color:#4a5568;font-size:0.78rem"></span>
+      </div>
     </div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer">
-      <input type="checkbox" id="show-inactive" onchange="renderClients()"> Inaktive anzeigen
-    </label>
+    <div id="sections-container"></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">Clients <span id="client-count" style="color:#63b3ed"></span></div>
-    <table>
-      <thead>
-        <tr>
-          <th>IP</th>
-          <th>MAC</th>
-          <th>Hostname / Label</th>
-          <th>Gateway</th>
-          <th>Zuletzt gesehen</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="client-table"></tbody>
-    </table>
+  <!-- Tab: Traffic & Events -->
+  <div id="tab-traffic" style="display:none">
+    <div class="traffic-events-grid">
+      <div class="card">
+        <div class="card-title">Traffic letzte 24h <span style="color:#4a5568;font-weight:400;text-transform:none;font-size:0.75rem">(&#8595; ein / &#8593; aus)</span></div>
+        <div class="traffic-summary" id="traffic-summary"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ereignisse</div>
+        <div class="events-list" id="events-list"></div>
+      </div>
+    </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <!-- Tab: Interfaces -->
+  <div id="tab-ifaces" style="display:none">
     <div class="card">
-      <div class="card-title">Gateways</div>
-      <div class="gw-grid" id="gw-grid"></div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>Netzwerk-Interfaces</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="color:#4a5568;font-size:0.72rem;font-weight:400;text-transform:none">intern = LAN-seitig &nbsp;|&nbsp; extern = Internet-facing</span>
+          <button class="btn primary" onclick="wgSync()" id="btn-wg-sync" title="WireGuard-Interfaces mit Gateways synchronisieren" style="font-size:0.78rem;padding:4px 10px">&#8635; WG-Sync</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Interface</th>
+          <th>Typ</th>
+          <th>Aktiv</th>
+          <th>Gateways</th>
+        </tr></thead>
+        <tbody id="ifaces-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab: Netze -->
+  <div id="tab-netze" style="display:none">
+    <div class="card" style="margin-bottom:10px;padding:8px 14px">
+      <div id="unbound-panel" style="display:flex;align-items:center;gap:8px"></div>
     </div>
     <div class="card">
-      <div class="card-title">Ereignisse</div>
-      <div class="events-list" id="events-list"></div>
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Netze &amp; Routing-Regeln</span>
+        <span style="color:#4a5568;font-size:0.72rem;font-weight:400;text-transform:none">Prio 1500 – überschreibt Fallback, wird von Client-Regeln überschrieben</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Subnetz</th>
+          <th>Clients</th>
+          <th>Standard-Gateway</th>
+          <th>Nur intern</th>
+          <th>Nur Gateway</th>
+          <th>DNS-Leak-Schutz</th>
+        </tr></thead>
+        <tbody id="netze-tbody"></tbody>
+      </table>
+      <div style="padding:12px 16px;border-top:1px solid #2d3748;display:flex;align-items:center;gap:10px">
+        <input type="text" id="new-subnet" placeholder="z.B. 172.16.25.0/24" style="width:190px">
+        <button class="btn" onclick="addSubnet()">+ Subnetz hinzufügen</button>
+      </div>
+    </div>
+  </div>
+  <!-- Tab: Mullvad -->
+  <div id="tab-mullvad" style="display:none">
+    <div class="mullvad-card" id="mullvad-status-card">
+      <div class="card-title" style="padding:0 0 10px 0;border-bottom:1px solid #2d3748;margin-bottom:12px">
+        Mullvad VPN – Aktive Verbindungen
+      </div>
+      <div id="mullvad-connections" style="color:#4a5568;font-size:0.83rem">Lade...</div>
+    </div>
+    <div class="mullvad-card" id="mullvad-devices-card">
+      <div class="card-title" style="padding:0 0 10px 0;border-bottom:1px solid #2d3748;margin-bottom:12px">
+        Mullvad Geräte
+      </div>
+      <div id="mullvad-not-configured" style="display:none;color:#fc8181;font-size:0.83rem;margin-bottom:10px">
+        &#9888; Mullvad nicht konfiguriert. Bitte <code>[mullvad]</code> Block mit <code>account = "..."</code> in <code>config.toml</code> eintragen.
+      </div>
+      <div id="mullvad-devices-list" style="margin-bottom:12px;font-size:0.83rem;color:#4a5568">Lade...</div>
+      <div id="mullvad-create-device-form" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="mullvad-device-name-input" placeholder="Gerätename (z.B. stellwerk-de)" style="min-width:200px;background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:6px 10px;border-radius:5px;font-size:0.85rem">
+        <button class="btn primary" onclick="mullvadCreateDevice()" id="btn-mullvad-create-device">+ Gerät erstellen</button>
+      </div>
+      <div style="margin-top:6px;font-size:0.76rem;color:#4a5568">
+        Generiert ein WireGuard-Keypair, registriert es bei Mullvad mit dem angegebenen Namen und speichert den Private Key intern.
+      </div>
+    </div>
+    <div class="mullvad-card" id="mullvad-connect-card">
+      <div class="card-title" style="padding:0 0 10px 0;border-bottom:1px solid #2d3748;margin-bottom:12px">
+        Neue Verbindung
+      </div>
+      <div id="mullvad-connect-form" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <select id="mullvad-device-sel" style="min-width:180px">
+          <option value="">Gerät wählen...</option>
+        </select>
+        <select id="mullvad-country-sel" style="min-width:220px">
+          <option value="">Länder werden geladen...</option>
+        </select>
+        <button class="btn primary" onclick="mullvadConnect()" id="btn-mullvad-connect">Verbinden</button>
+        <button class="btn" onclick="mullvadCountries=[];loadMullvadCountries()">&#8635;</button>
+      </div>
+      <div style="margin-top:8px;font-size:0.76rem;color:#4a5568">
+        Schreibt WireGuard-Config nach <code>/home/stellwerk/wg/</code>, kopiert via sudo-Helper nach <code>/etc/wireguard/</code> und startet Interface.
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Status -->
+  <div id="tab-status" style="display:none;padding:24px;max-width:600px">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-ppp0-status" style="width:18px;height:18px;flex-shrink:0"></span>
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">ppp0</div>
+          <div style="font-size:0.82rem;color:#718096">DSL-Verbindung</div>
+        </div>
+        <div id="ppp0-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+      </div>
+      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-gre" style="width:18px;height:18px;flex-shrink:0"></span>
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">GRE Tunnel</div>
+          <div style="font-size:0.82rem;color:#718096" id="gre-nexthop-label">Fiber-Tunnel</div>
+        </div>
+        <div id="gre-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+      </div>
+      <div style="font-size:0.76rem;color:#4a5568;text-align:right" id="status-last-check"></div>
     </div>
   </div>
 </main>
@@ -134,11 +358,39 @@
 <script>
 let clients = [];
 let gateways = [];
+let networks = {}; // subnet → {default_gateway, internal_only}
+let ifaces = [];   // [{name, role, enabled, gateways}]
+let trafficData = [];
+let currentView = 'gateway'; // 'gateway' | 'group'
+let currentTab = 'clients';
+let defaultGw = 'gre_175';
+let scanSubnets = [];
+let userRole = 'admin'; // 'admin' | 'viewer'
+let dnsServers = [];    // [[name, ip], ...] aus config.toml [dns.servers]
+let mullvadConfigured = false;
+
+function isAdmin() { return userRole === 'admin'; }
+
+// DNS-Select: Dropdown mit benannten Servern aus config + "Custom" + "Kein"
+function dnsSelect(id, currentIp, onchange) {
+  const knownIp = dnsServers.find(([,ip]) => ip === currentIp);
+  const opts = [
+    `<option value=""${!currentIp ? ' selected' : ''}>– kein DNS-Schutz</option>`,
+    ...dnsServers.map(([name, ip]) =>
+      `<option value="${esc(ip)}"${ip === currentIp ? ' selected' : ''}>${esc(name)} (${esc(ip)})</option>`
+    ),
+    !currentIp || knownIp ? '' :
+      `<option value="${esc(currentIp)}" selected>Custom: ${esc(currentIp)}</option>`,
+  ].join('');
+  return `<select id="${id}" onchange="${onchange}" style="font-size:0.75rem;color:#68d391;background:#0f1117;border-color:#2d5a40;max-width:160px">${opts}</select>`;
+}
+
+// --- Login ---
 
 function showLogin() {
   document.getElementById('login-overlay').classList.add('visible');
   document.getElementById('login-error').textContent = '';
-  document.getElementById('login-user').focus();
+  setTimeout(() => document.getElementById('login-user').focus(), 50);
 }
 
 function hideLogin() {
@@ -155,6 +407,8 @@ async function doLogin() {
       body: JSON.stringify({username, password})
     });
     if (r.ok) {
+      const d = await r.json();
+      userRole = d.role || 'viewer';
       hideLogin();
       document.getElementById('login-pass').value = '';
       loadAll();
@@ -169,17 +423,26 @@ async function doLogin() {
 
 async function doLogout() {
   await fetch('/api/logout', {method: 'POST'}).catch(()=>{});
-  clients = [];
-  gateways = [];
-  document.getElementById('client-table').innerHTML = '';
-  document.getElementById('gw-grid').innerHTML = '';
-  document.getElementById('events-list').innerHTML = '';
+  userRole = 'viewer';
+  clients = []; gateways = []; networks = {}; ifaces = []; trafficData = [];
+  document.getElementById('sections-container').innerHTML = '';
   showLogin();
 }
 
-async function loadAll() {
-  await Promise.all([loadStatus(), loadClients(), loadGateways(), loadEvents()]);
+// --- Tabs ---
+
+function showTab(tab) {
+  currentTab = tab;
+  ['clients', 'traffic', 'netze', 'ifaces', 'mullvad', 'status'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'netze') renderNetze();
+  if (tab === 'ifaces') renderIfaces();
+  if (tab === 'mullvad') renderMullvad();
 }
+
+// --- API ---
 
 async function apiFetch(url, opts) {
   const r = await fetch(url, opts);
@@ -187,17 +450,39 @@ async function apiFetch(url, opts) {
   return r;
 }
 
+async function loadAll() {
+  const meR = await apiFetch('/api/me');
+  if (meR) { const me = await meR.json(); userRole = me.role || 'viewer'; }
+  await Promise.all([loadStatus(), loadClients(), loadGateways(), loadTraffic(), loadEvents(), loadNetworks(), loadIfaces(), loadSettings()]);
+  // Scan-Button nur für Admin
+  const scanBtn = document.getElementById('btn-scan');
+  if (scanBtn) scanBtn.style.display = isAdmin() ? '' : 'none';
+  // Viewer-Badge im Header
+  const badge = document.getElementById('viewer-badge');
+  if (badge) badge.style.display = isAdmin() ? 'none' : '';
+}
+
 async function loadStatus() {
   try {
     const r = await apiFetch('/api/status');
     if (!r) return;
     const d = await r.json();
-    document.getElementById('dot-ppp0').className = 'dot ' + (d.ppp0_up ? 'up' : 'down');
-    document.getElementById('dot-gre').className = 'dot ' + (d.gre_up ? 'up' : 'down');
+    const ppp0Class = 'dot ' + (d.ppp0_up ? 'up' : 'down');
+    const greClass  = 'dot ' + (d.gre_up  ? 'up' : 'down');
+    document.getElementById('dot-ppp0-status').className = ppp0Class;
+    document.getElementById('dot-gre').className = greClass;
+    document.getElementById('ppp0-status-text').textContent = d.ppp0_up ? 'Online' : 'Offline';
+    document.getElementById('gre-status-text').textContent  = d.gre_up  ? 'Online' : 'Offline';
     if (d.last_check) {
-      const ago = Math.round((Date.now()/1000 - d.last_check));
+      const ago = Math.round(Date.now()/1000 - d.last_check);
       document.getElementById('last-check').textContent = `geprüft vor ${ago}s`;
+      document.getElementById('status-last-check').textContent = `Zuletzt geprüft vor ${ago}s`;
     }
+    if (d.version) document.getElementById('version-badge').textContent = 'v' + d.version;
+    if (d.default_gw) defaultGw = d.default_gw;
+    if (d.scan_subnets) { scanSubnets = d.scan_subnets; if (currentTab === 'netze') renderNetze(); }
+    if (d.dns_servers) dnsServers = d.dns_servers; // [[name, ip], ...]
+    mullvadConfigured = !!d.mullvad_configured;
   } catch(e) {}
 }
 
@@ -206,7 +491,8 @@ async function loadClients() {
     const r = await apiFetch('/api/clients');
     if (!r) return;
     clients = await r.json();
-    renderClients();
+    renderAll();
+    if (currentTab === 'netze') renderNetze();
   } catch(e) {}
 }
 
@@ -215,7 +501,63 @@ async function loadGateways() {
     const r = await apiFetch('/api/gateways');
     if (!r) return;
     gateways = await r.json();
-    renderGateways();
+    renderAll();
+    if (currentTab === 'netze') renderNetze();
+  } catch(e) {}
+}
+
+let settings = {};
+async function loadSettings() {
+  try {
+    const r = await apiFetch('/api/settings');
+    if (!r) return;
+    settings = await r.json();
+    renderUnboundPanel();
+  } catch(e) {}
+}
+
+function renderUnboundPanel() {
+  const el = document.getElementById('unbound-panel');
+  if (!el) return;
+  const cur = settings.unbound_gateway || '';
+  if (!isAdmin()) {
+    el.innerHTML = cur
+      ? `<span style="font-size:0.82rem;color:#a0aec0">Unbound via <span style="color:#68d391;font-family:monospace">${esc(cur)}</span></span>`
+      : `<span style="font-size:0.82rem;color:#4a5568">Unbound: kein Gateway (ppp0/default)</span>`;
+    return;
+  }
+  const opts = ['', ...gateways.filter(g => g.name !== 'nointernet').map(g => g.name)]
+    .map(n => `<option value="${n}"${n===cur?' selected':''}>${n || '– Standard (ppp0)'}</option>`)
+    .join('');
+  el.innerHTML = `<span style="font-size:0.82rem;color:#a0aec0;margin-right:6px">Unbound DNS via:</span><select onchange="setUnboundGateway(this.value)" style="font-size:0.8rem">${opts}</select>`;
+}
+
+async function setUnboundGateway(val) {
+  try {
+    const r = await apiFetch('/api/settings/unbound-gateway', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({value: val})
+    });
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      settings.unbound_gateway = val;
+      toast(`Unbound → ${val || 'Standard'}`);
+    }
+  } catch(e) { toast('Fehler', true); }
+}
+
+async function loadTraffic() {
+  try {
+    const r = await apiFetch('/api/traffic');
+    if (!r) return;
+    trafficData = await r.json() || [];
+    const trafficMap = {};
+    for (const rec of trafficData) trafficMap[rec.ip] = rec;
+    window._trafficMap = trafficMap;
+    renderAll();
+    renderTrafficSummary(trafficData);
   } catch(e) {}
 }
 
@@ -227,80 +569,527 @@ async function loadEvents() {
     const el = document.getElementById('events-list');
     if (!events.length) { el.innerHTML = '<span style="color:#4a5568">Keine Ereignisse</span>'; return; }
     el.innerHTML = events.map(e => {
-      const t = new Date(e.ts * 1000).toLocaleTimeString('de');
-      return `<div class="event-row"><span class="ev-time">${t}</span><span class="ev-name">${e.event}</span>${e.detail||''}</div>`;
+      const t = new Date(e.ts * 1000).toLocaleString('de', {hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit'});
+      return `<div class="event-row"><span class="ev-time">${t}</span><span class="ev-name">${esc(e.event)}</span>${esc(e.detail||'')}</div>`;
     }).join('');
   } catch(e) {}
 }
 
-function renderClients() {
+async function loadIfaces() {
+  try {
+    const r = await apiFetch('/api/ifaces');
+    if (!r) return;
+    ifaces = await r.json() || [];
+    if (currentTab === 'ifaces') renderIfaces();
+    if (currentTab === 'netze') renderNetze(); // refresh interface badges
+  } catch(e) {}
+}
+
+async function loadNetworks() {
+  try {
+    const r = await apiFetch('/api/networks');
+    if (!r) return;
+    const arr = await r.json();
+    networks = {};
+    if (Array.isArray(arr)) {
+      for (const n of arr) networks[n.subnet] = n;
+    }
+    if (currentTab === 'netze') renderNetze();
+  } catch(e) {}
+}
+
+// --- View control ---
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('btn-view-gw').classList.toggle('active', v === 'gateway');
+  document.getElementById('btn-view-grp').classList.toggle('active', v === 'group');
+  renderAll();
+}
+
+// --- Clients rendering ---
+
+function getFilteredClients() {
   const query = document.getElementById('search').value.toLowerCase();
   const showInactive = document.getElementById('show-inactive').checked;
-  const tbody = document.getElementById('client-table');
-  const gwOptions = gateways.map(g => `<option value="${g.name}">${g.name}</option>`).join('');
-
-  let filtered = clients.filter(c => {
+  return clients.filter(c => {
     if (!showInactive && !c.active) return false;
     if (!query) return true;
-    return (c.ip||'').includes(query) ||
-           (c.mac||'').toLowerCase().includes(query) ||
-           (c.hostname||'').toLowerCase().includes(query) ||
-           (c.label||'').toLowerCase().includes(query);
+    return (c.ip||'').includes(query)
+      || (c.mac||'').toLowerCase().includes(query)
+      || (c.hostname||'').toLowerCase().includes(query)
+      || (c.label||'').toLowerCase().includes(query)
+      || (c.group_name||'').toLowerCase().includes(query);
+  });
+}
+
+function renderAll() {
+  if (!gateways.length && !clients.length) return;
+  const filtered = getFilteredClients();
+  document.getElementById('client-count').textContent = `${filtered.length} / ${clients.length} Clients`;
+
+  if (currentView === 'gateway') {
+    renderGatewayView(filtered);
+  } else {
+    renderGroupView(filtered);
+  }
+  renderUnboundPanel();
+}
+
+function renderGatewayView(filtered) {
+  const trafficMap = window._trafficMap || {};
+  const container = document.getElementById('sections-container');
+
+  const byGateway = {};
+  for (const gw of gateways) byGateway[gw.name] = [];
+  for (const c of filtered) {
+    if (!byGateway[c.gateway]) byGateway[c.gateway] = [];
+    byGateway[c.gateway].push(c);
+  }
+
+  const collapsed = new Set();
+  container.querySelectorAll('.gw-section.collapsed').forEach(el => collapsed.add(el.dataset.key));
+
+  const query = document.getElementById('search').value;
+  const sectionsHtml = gateways.map(gw => {
+    const gwClients = byGateway[gw.name] || [];
+    if (!gwClients.length && !query) return '';
+
+    const totalIn = gwClients.reduce((s, c) => s + (trafficMap[c.ip]?.bytes_in || 0), 0);
+    const totalOut = gwClients.reduce((s, c) => s + (trafficMap[c.ip]?.bytes_out || 0), 0);
+    const trafficStr = (totalIn || totalOut)
+      ? `<span class="gw-traffic">&#8595;${fmtBytes(totalIn)} &#8593;${fmtBytes(totalOut)}</span>`
+      : '';
+
+    const isCollapsed = collapsed.has(gw.name) ? 'collapsed' : '';
+    const dnsIp = gw.dns_ip || '';
+    const dnsBadge = isAdmin()
+      ? `<span class="dns-badge ${dnsIp ? '' : 'no-dns'}" onclick="event.stopPropagation();editGatewayDns('${esc(gw.name)}','${esc(dnsIp)}')" title="DNS-Leak-Schutz: DNS-Server für Clients dieses Gateways">DNS${dnsIp ? ': '+esc(dnsIp) : ': –'}</span>`
+      : (dnsIp ? `<span class="dns-badge" title="DNS-Leak-Schutz aktiv: ${esc(dnsIp)}">DNS: ${esc(dnsIp)}</span>` : '');
+    return `
+    <div class="gw-section ${isCollapsed}" data-key="${esc(gw.name)}">
+      <div class="gw-section-header" onclick="toggleSection(this.parentElement)">
+        <span class="toggle-arrow">&#9660;</span>
+        <span class="gw-title">${esc(gw.name)}</span>
+        <span class="gw-iface">${esc(gw.interface)}</span>
+        <span class="gw-desc">${esc(gw.description||'')}</span>
+        ${trafficStr}
+        ${dnsBadge}
+        <span class="gw-count">${gwClients.length}</span>
+      </div>
+      <div class="gw-body">
+        ${gwClients.length ? renderClientTable(gwClients) : '<div class="empty-section">Keine Clients</div>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = sectionsHtml;
+}
+
+function renderGroupView(filtered) {
+  const container = document.getElementById('sections-container');
+
+  const groups = {};
+  for (const c of filtered) {
+    const key = c.group_name || '(keine Gruppe)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(c);
+  }
+
+  const sorted = Object.keys(groups).sort((a, b) => {
+    if (a === '(keine Gruppe)') return 1;
+    if (b === '(keine Gruppe)') return -1;
+    return a.localeCompare(b);
   });
 
-  document.getElementById('client-count').textContent = `(${filtered.length}/${clients.length})`;
+  const collapsed = new Set();
+  container.querySelectorAll('.gw-section.collapsed').forEach(el => collapsed.add(el.dataset.key));
 
-  tbody.innerHTML = filtered.map(c => {
+  const sectionsHtml = sorted.map(grp => {
+    const grpClients = groups[grp];
+    const isCollapsed = collapsed.has(grp) ? 'collapsed' : '';
+    return `
+    <div class="gw-section ${isCollapsed}" data-key="${esc(grp)}">
+      <div class="gw-section-header" onclick="toggleSection(this.parentElement)">
+        <span class="toggle-arrow">&#9660;</span>
+        <span class="gw-title">${esc(grp)}</span>
+        <span class="gw-desc"></span>
+        <span class="gw-count">${grpClients.length}</span>
+      </div>
+      <div class="gw-body">
+        ${renderClientTable(grpClients)}
+      </div>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = sectionsHtml;
+}
+
+function renderClientTable(clientList) {
+  const trafficMap = window._trafficMap || {};
+  const rows = clientList.map(c => {
     const ago = timeAgo(c.last_seen);
-    const gwBadgeClass = gatewayBadgeClass(c.gateway);
+    const subnet = getSubnetLabel(c.ip);
+    const traf = trafficMap[c.ip];
+    const trafficCell = traf
+      ? fmtTrafficCell(traf)
+      : '<span style="color:#4a5568">–</span>';
     const statusBadge = c.active
       ? '<span class="badge active-badge">aktiv</span>'
       : '<span class="badge inactive-badge">inaktiv</span>';
-    const label = c.label ? `<span style="color:#e2e8f0">${esc(c.label)}</span>` : '';
-    const hostname = c.hostname ? `<span style="color:#a0aec0;font-size:0.8rem">${esc(c.hostname)}</span>` : '';
-    const nameCell = [label, hostname].filter(Boolean).join('<br>') || '<span style="color:#4a5568">–</span>';
 
-    const selOptions = gateways.map(g =>
-      `<option value="${g.name}" ${g.name===c.gateway?'selected':''}>${g.name}</option>`
-    ).join('');
+    const displayName = c.label
+      ? `<strong style="color:#e2e8f0">${esc(c.label)}</strong>`
+      : (c.hostname ? esc(c.hostname) : '<span style="color:#4a5568">–</span>');
+    const subLabel = c.label && c.hostname
+      ? `<div style="color:#718096;font-size:0.76rem">${esc(c.hostname)}</div>`
+      : '';
+
+    const selOptions = gateways
+      .map(g => `<option value="${g.name}"${g.name===c.gateway?' selected':''}>${g.name}</option>`)
+      .join('');
+
+    const ipv6Cell = c.ipv6
+      ? `<div class="ip6" title="${esc(c.ipv6)}">${esc(c.ipv6)}</div>`
+      : '';
+
+    const nameCell = isAdmin()
+      ? `${displayName}${subLabel}
+        <div style="margin-top:3px;display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+          <input class="inline-input" placeholder="Label..." value="${esc(c.label||'')}"
+            onblur="setLabel('${esc(c.ip)}', this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()" style="width:90px">
+          <input class="inline-input" placeholder="Gruppe..." value="${esc(c.group_name||'')}"
+            onblur="setGroup('${esc(c.ip)}', this.value)"
+            onkeydown="if(event.key==='Enter')this.blur()" style="width:80px">
+          ${dnsSelect('dns-c-'+c.ip.replace(/\./g,'_'), c.dns_ip||'', `setClientDns('${esc(c.ip)}', this.value)`)}
+        </div>`
+      : `${displayName}${subLabel}`;
+    const fallbackIndicator = c.original_gateway
+      ? `<span title="Fallback aktiv – urspr. Gateway: ${esc(c.original_gateway)}" style="color:#f6ad55;font-size:0.7rem;margin-left:4px">⚡ppp0</span>`
+      : '';
+    const gatewayCell = isAdmin()
+      ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+           <select onchange="setGateway('${esc(c.ip)}', this.value)">${selOptions}</select>
+           <label title="Autofallback: bei Ausfall automatisch auf ppp0 schwenken" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:0.75rem;color:#718096;white-space:nowrap">
+             <input type="checkbox" ${c.autofallback ? 'checked' : ''} onchange="setAutofallback('${esc(c.ip)}', this.checked)" style="cursor:pointer;accent-color:#63b3ed">
+             FB
+           </label>
+           ${fallbackIndicator}
+         </div>`
+      : `<span style="color:#a0aec0;font-size:0.85rem">${esc(c.gateway)}${fallbackIndicator}</span>`;
 
     return `<tr>
-      <td class="ip">${esc(c.ip)}</td>
-      <td class="mac">${esc(c.mac||'–')}</td>
-      <td>
-        ${nameCell}
-        <div style="margin-top:4px">
-          <input type="text" placeholder="Label..." value="${esc(c.label||'')}"
-            style="background:#0f1117;border:1px solid #2d3748;color:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:0.78rem;width:110px"
-            onblur="setLabel('${esc(c.ip)}', this.value)" onkeydown="if(event.key==='Enter')this.blur()">
-        </div>
-      </td>
-      <td>
-        <select onchange="setGateway('${esc(c.ip)}', this.value)">${selOptions}</select>
-      </td>
+      <td><span class="ip">${esc(c.ip)}</span>${ipv6Cell}<div class="mac">${esc(c.mac||'')}</div></td>
+      <td><span class="badge subnet-badge">${subnet}</span></td>
+      <td>${nameCell}</td>
+      <td>${gatewayCell}</td>
+      <td class="traffic-cell">${trafficCell}</td>
       <td class="time-ago">${ago}</td>
       <td>${statusBadge}</td>
     </tr>`;
   }).join('');
+
+  return `<table>
+    <thead><tr>
+      <th>IP / MAC</th><th>Netz</th><th>Name / Label / Gruppe</th>
+      <th>Gateway</th><th>Traffic 24h</th><th>Zuletzt</th><th>Status</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
 }
 
-function renderGateways() {
-  const el = document.getElementById('gw-grid');
-  el.innerHTML = gateways.map(g => `
-    <div class="gw-card">
-      <h3>${esc(g.name)}</h3>
-      <div class="gw-iface">${esc(g.interface)}</div>
-      <p>${esc(g.description||'')} <span style="color:#4a5568">mark:${g.mark}</span></p>
-    </div>
-  `).join('');
+function fmtTrafficCell(traf) {
+  const hasDetail = traf.bytes_in_intern != null;
+  if (!hasDetail) {
+    return `<span class="traffic-in">&#8595;${fmtBytes(traf.bytes_in)}</span> <span class="traffic-out">&#8593;${fmtBytes(traf.bytes_out)}</span>`;
+  }
+  const inExtern = traf.bytes_in - traf.bytes_in_intern;
+  const outExtern = traf.bytes_out - traf.bytes_out_intern;
+  return `<span class="traffic-label">int</span><span class="traffic-intern">&#8595;${fmtBytes(traf.bytes_in_intern)} &#8593;${fmtBytes(traf.bytes_out_intern)}</span> `
+       + `<span class="traffic-label">ext</span><span class="traffic-extern">&#8595;${fmtBytes(inExtern)} &#8593;${fmtBytes(outExtern)}</span>`;
 }
 
-function gatewayBadgeClass(gw) {
-  if (gw.startsWith('gre')) return 'gre';
-  if (gw.startsWith('vpn') || gw === 'webgate' || gw === 'stargate' || gw === 'buda') return 'vpn';
-  if (gw === 'ppp0') return 'ppp';
-  return 'other';
+function renderTrafficSummary(records) {
+  const el = document.getElementById('traffic-summary');
+  if (!Array.isArray(records) || !records.length) {
+    el.innerHTML = '<span style="color:#4a5568;font-size:0.82rem">Noch keine Daten</span>';
+    return;
+  }
+  const sorted = [...records].sort((a,b) => (b.bytes_in+b.bytes_out) - (a.bytes_in+a.bytes_out));
+  el.innerHTML = sorted.slice(0, 50).map(r => {
+    const client = clients.find(c => c.ip === r.ip);
+    const label = client?.label || client?.hostname || '';
+    const inExtern = r.bytes_in - (r.bytes_in_intern || 0);
+    const outExtern = r.bytes_out - (r.bytes_out_intern || 0);
+    return `<div class="ts-row">
+      <span class="ts-ip">${esc(r.ip)}</span>
+      <span class="ts-label">${esc(label)}</span>
+      <span class="traffic-label">int</span><span class="traffic-intern ts-in">&#8595;${fmtBytes(r.bytes_in_intern||0)} &#8593;${fmtBytes(r.bytes_out_intern||0)}</span>
+      <span class="traffic-label">ext</span><span class="traffic-extern ts-out">&#8595;${fmtBytes(inExtern)} &#8593;${fmtBytes(outExtern)}</span>
+    </div>`;
+  }).join('');
 }
+
+// --- Interfaces tab ---
+
+function ifaceInfo(name) {
+  return ifaces.find(i => i.name === name) || { role: 'extern', enabled: 1 };
+}
+
+function ifaceBadge(name) {
+  const info = ifaceInfo(name);
+  const roleColor = info.role === 'intern' ? '#68d391' : '#63b3ed';
+  const dim = !info.enabled ? ' opacity:0.5' : '';
+  return `<span style="font-family:monospace;font-size:0.76rem;color:${roleColor};${dim}">${esc(name)} <span style="color:#4a5568">[${info.role}${info.enabled ? '' : ' off'}]</span></span>`;
+}
+
+function renderIfaces() {
+  const tbody = document.getElementById('ifaces-tbody');
+  if (!ifaces.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#4a5568;padding:12px 14px">Keine Interfaces gefunden</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ifaces.map(iface => {
+    const isIntern = iface.role === 'intern';
+    const isEnabled = !!iface.enabled;
+    const rowDim = !isEnabled ? ' class="iface-disabled"' : '';
+    const gwList = iface.gateways.length
+      ? `<span class="gw-list">${iface.gateways.map(g => esc(g)).join(' · ')}</span>`
+      : '<span style="color:#4a5568">–</span>';
+
+    const roleCell = isAdmin()
+      ? `<div class="role-toggle">
+          <button class="role-btn${isIntern ? ' active-intern' : ''}"
+            onclick="setIfaceRole('${esc(iface.name)}', 'intern')">intern</button>
+          <button class="role-btn${!isIntern ? ' active-extern' : ''}"
+            onclick="setIfaceRole('${esc(iface.name)}', 'extern')">extern</button>
+        </div>`
+      : `<span style="color:${isIntern ? '#68d391' : '#63b3ed'};font-size:0.82rem">${isIntern ? 'intern' : 'extern'}</span>`;
+    const enabledCell = isAdmin()
+      ? `<div class="iface-enabled">
+          <label class="toggle-switch">
+            <input type="checkbox"${isEnabled ? ' checked' : ''}
+              onchange="setIfaceEnabled('${esc(iface.name)}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <span style="font-size:0.8rem;color:${isEnabled ? '#68d391' : '#fc8181'}">${isEnabled ? 'an' : 'aus'}</span>
+        </div>`
+      : `<span style="font-size:0.8rem;color:${isEnabled ? '#68d391' : '#fc8181'}">${isEnabled ? 'an' : 'aus'}</span>`;
+
+    return `<tr${rowDim}>
+      <td class="ip">${esc(iface.name)}</td>
+      <td>${roleCell}</td>
+      <td>${enabledCell}</td>
+      <td>${gwList}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function setIfaceRole(name, role) {
+  const info = ifaceInfo(name);
+  await saveIface(name, role, !!info.enabled);
+}
+
+async function setIfaceEnabled(name, enabled) {
+  const info = ifaceInfo(name);
+  await saveIface(name, info.role, enabled);
+}
+
+async function saveIface(name, role, enabled) {
+  try {
+    const r = await apiFetch(`/api/ifaces/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ role, enabled })
+    });
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      const idx = ifaces.findIndex(i => i.name === name);
+      if (idx >= 0) { ifaces[idx].role = role; ifaces[idx].enabled = enabled ? 1 : 0; }
+      toast(`${name}: ${role}${enabled ? '' : ' (aus)'}`);
+      renderIfaces();
+      if (currentTab === 'netze') renderNetze();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+async function wgSync() {
+  const btn = document.getElementById('btn-wg-sync');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await apiFetch('/api/wg/sync', { method: 'POST' });
+    if (!r) { btn.disabled = false; btn.textContent = '↻ WG-Sync'; return; }
+    const d = await r.json();
+    if (d.ok) {
+      const msgs = [];
+      if (d.added.length)   msgs.push(`+${d.added.length} angelegt: ${d.added.join(', ')}`);
+      if (d.removed.length) msgs.push(`-${d.removed.length} entfernt: ${d.removed.join(', ')}`);
+      toast(msgs.length ? msgs.join(' | ') : 'Sync: keine Änderungen');
+      await loadAll();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+  btn.disabled = false; btn.textContent = '↻ WG-Sync';
+}
+
+// --- Networks tab ---
+
+function getSubnetCidr(ip) {
+  const parts = ip.split('.').map(Number);
+  if (parts[0] === 172 && parts[1] === 16) {
+    const third = parts[2];
+    if (third >= 0 && third <= 3) return '172.16.0.0/22';
+    return `172.16.${third}.0/24`;
+  }
+  return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`;
+}
+
+function subnetId(subnet) {
+  return subnet.replace(/[./]/g, '_');
+}
+
+function renderNetze() {
+  // Show union of: config scan_subnets + client-derived subnets + manually configured
+  const clientSubnets = new Set(clients.filter(c => c.active).map(c => getSubnetCidr(c.ip)));
+  const configuredSubnets = new Set(Object.keys(networks));
+  const allSubnets = [...new Set([...scanSubnets, ...clientSubnets, ...configuredSubnets])].sort();
+
+  const tbody = document.getElementById('netze-tbody');
+
+  if (!allSubnets.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:#4a5568;padding:12px 14px">Keine Subnetze gefunden</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = allSubnets.map(subnet => {
+    const cfg = networks[subnet] || { default_gateway: defaultGw, internal_only: 0, gateway_only: 0 };
+    const clientCount = clients.filter(c => c.active && getSubnetCidr(c.ip) === subnet).length;
+    const sid = subnetId(subnet);
+
+    const gwDisabled = cfg.internal_only ? ' disabled' : '';
+    const gwOptions = gateways.map(g =>
+      `<option value="${g.name}"${g.name === cfg.default_gateway ? ' selected' : ''}>${g.name}</option>`
+    ).join('');
+    const hasConfig = !!networks[subnet];
+    const internChecked = cfg.internal_only ? ' checked' : '';
+    const gwOnlyChecked = cfg.gateway_only ? ' checked' : '';
+
+    const configNote = !hasConfig
+      ? `<div class="net-hint">Global-Standard (${esc(defaultGw)})</div>`
+      : '';
+
+    const selGw = gateways.find(g => g.name === cfg.default_gateway);
+    const ifaceName = selGw ? selGw.interface : '';
+    const ifaceBadgeHtml = ifaceName && !cfg.internal_only ? ifaceBadge(ifaceName) : '';
+
+    const gwCell = isAdmin()
+      ? `<select id="net-gw-${sid}" onchange="applyNetwork('${esc(subnet)}')"${gwDisabled}>${gwOptions}</select>
+         <div style="margin-top:3px">${ifaceBadgeHtml}</div>`
+      : `<span style="color:#a0aec0;font-size:0.85rem">${esc(cfg.default_gateway)}</span>
+         <div style="margin-top:3px">${ifaceBadgeHtml}</div>`;
+    const internCell = isAdmin()
+      ? `<label class="net-toggle">
+          <input type="checkbox" id="net-int-${sid}"${internChecked}
+            onchange="toggleNetworkInternal('${esc(subnet)}', this)">
+          <span style="color:${cfg.internal_only ? '#e879f9' : '#718096'}">Nur intern</span>
+        </label>`
+      : `<span style="color:${cfg.internal_only ? '#e879f9' : '#718096'};font-size:0.82rem">${cfg.internal_only ? 'intern' : '–'}</span>`;
+    const gwOnlyCell = isAdmin()
+      ? `<label class="net-toggle">
+          <input type="checkbox" id="net-gwo-${sid}"${gwOnlyChecked}${cfg.internal_only ? ' disabled' : ''}
+            onchange="toggleGatewayOnly('${esc(subnet)}', this)">
+          <span style="color:${cfg.gateway_only && !cfg.internal_only ? '#f6ad55' : '#718096'}">Nur Gateway</span>
+        </label>`
+      : `<span style="color:${cfg.gateway_only && !cfg.internal_only ? '#f6ad55' : '#718096'};font-size:0.82rem">${cfg.gateway_only ? 'gateway-only' : '–'}</span>`;
+
+    const dnsIp = cfg.dns_ip || '';
+    const dnsCell = isAdmin()
+      ? dnsSelect('net-dns-'+sid, dnsIp, `saveNetworkDns('${esc(subnet)}', this.value)`)
+      : `<span style="color:${dnsIp ? '#68d391' : '#4a5568'};font-family:monospace;font-size:0.82rem">${dnsIp || '–'}</span>`;
+
+    return `<tr>
+      <td class="ip">${esc(subnet)}${configNote}</td>
+      <td style="color:#a0aec0">${clientCount || (hasConfig ? '<span style="color:#4a5568">0</span>' : '0')}</td>
+      <td>${gwCell}</td>
+      <td>${internCell}</td>
+      <td>${gwOnlyCell}</td>
+      <td>${dnsCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+function netCfg(subnet) {
+  return networks[subnet] || { default_gateway: defaultGw, internal_only: 0, gateway_only: 0, dns_ip: '' };
+}
+
+async function applyNetwork(subnet) {
+  const sid = subnetId(subnet);
+  const gateway = document.getElementById('net-gw-' + sid).value;
+  const cfg = netCfg(subnet);
+  await saveNetwork(subnet, gateway, !!cfg.internal_only, !!cfg.gateway_only, cfg.dns_ip || '');
+}
+
+async function toggleNetworkInternal(subnet, checkbox) {
+  const sid = subnetId(subnet);
+  const gwSelect = document.getElementById('net-gw-' + sid);
+  const gwoCheck = document.getElementById('net-gwo-' + sid);
+  const internalOnly = checkbox.checked;
+  gwSelect.disabled = internalOnly;
+  if (gwoCheck) gwoCheck.disabled = internalOnly;
+  const cfg = netCfg(subnet);
+  await saveNetwork(subnet, gwSelect.value, internalOnly, internalOnly ? false : !!cfg.gateway_only, cfg.dns_ip || '');
+}
+
+async function toggleGatewayOnly(subnet, checkbox) {
+  const sid = subnetId(subnet);
+  const gateway = document.getElementById('net-gw-' + sid).value;
+  const cfg = netCfg(subnet);
+  await saveNetwork(subnet, gateway, !!cfg.internal_only, checkbox.checked, cfg.dns_ip || '');
+}
+
+async function saveNetworkDns(subnet, dnsIp) {
+  const cfg = netCfg(subnet);
+  await saveNetwork(subnet, cfg.default_gateway, !!cfg.internal_only, !!cfg.gateway_only, dnsIp || '');
+}
+
+async function addSubnet() {
+  const input = document.getElementById('new-subnet');
+  const subnet = input.value.trim();
+  if (!subnet || !subnet.includes('/')) { toast('Ungültiges Format (z.B. 172.16.25.0/24)', true); return; }
+  await saveNetwork(subnet, defaultGw, false, false, '');
+  input.value = '';
+}
+
+async function saveNetwork(subnet, gateway, internalOnly, gatewayOnly, dnsIp) {
+  try {
+    const r = await apiFetch(`/api/networks/${encodeURIComponent(subnet)}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ default_gateway: gateway, internal_only: internalOnly, gateway_only: gatewayOnly, dns_ip: dnsIp || '' })
+    });
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      networks[subnet] = { subnet, default_gateway: gateway, internal_only: internalOnly ? 1 : 0, gateway_only: gatewayOnly ? 1 : 0, dns_ip: dnsIp || '' };
+      const mode = internalOnly ? 'nur intern' : (gatewayOnly ? 'nur gateway' : gateway);
+      toast(`${subnet} → ${mode}`);
+      renderNetze();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+function toggleSection(el) {
+  el.classList.toggle('collapsed');
+}
+
+// --- Mutations ---
 
 async function setGateway(ip, gw) {
   try {
@@ -309,10 +1098,33 @@ async function setGateway(ip, gw) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({gateway: gw})
     });
+    if (!r) return;
     const d = await r.json();
     if (d.ok) {
-      toast(`Gateway fuer ${ip} → ${gw}`);
-      await loadClients();
+      const idx = clients.findIndex(c => c.ip === ip);
+      if (idx >= 0) clients[idx].gateway = gw;
+      toast(`${ip} → ${gw}`);
+      renderAll();
+    } else {
+      toast('Fehler: ' + (d.error||'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+async function setAutofallback(ip, enabled) {
+  try {
+    const r = await apiFetch(`/api/clients/${encodeURIComponent(ip)}/autofallback`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({autofallback: enabled})
+    });
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      const idx = clients.findIndex(c => c.ip === ip);
+      if (idx >= 0) clients[idx].autofallback = enabled ? 1 : 0;
+      toast(`${ip} autofallback ${enabled ? 'aktiviert' : 'deaktiviert'}`);
+      renderAll();
     } else {
       toast('Fehler: ' + (d.error||'unbekannt'), true);
     }
@@ -321,7 +1133,7 @@ async function setGateway(ip, gw) {
 
 async function setLabel(ip, label) {
   try {
-    await fetch(`/api/clients/${encodeURIComponent(ip)}/label`, {
+    await apiFetch(`/api/clients/${encodeURIComponent(ip)}/label`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({label})
@@ -331,20 +1143,108 @@ async function setLabel(ip, label) {
   } catch(e) {}
 }
 
+async function setGroup(ip, group_name) {
+  try {
+    await apiFetch(`/api/clients/${encodeURIComponent(ip)}/group`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({group_name})
+    });
+    const idx = clients.findIndex(c => c.ip === ip);
+    if (idx >= 0) {
+      clients[idx].group_name = group_name || null;
+      if (currentView === 'group') renderAll();
+    }
+  } catch(e) {}
+}
+
+async function setClientDns(ip, dns_ip) {
+  try {
+    await apiFetch(`/api/clients/${encodeURIComponent(ip)}/dns`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({dns_ip: dns_ip.trim()})
+    });
+    const idx = clients.findIndex(c => c.ip === ip);
+    if (idx >= 0) clients[idx].dns_ip = dns_ip.trim() || null;
+  } catch(e) {}
+}
+
 async function triggerScan() {
   try {
     await apiFetch('/api/scan', {method: 'POST'});
     toast('Scan gestartet...');
-    setTimeout(loadAll, 3000);
+    setTimeout(loadAll, 4000);
   } catch(e) {}
+}
+
+async function editGatewayDns(gwName, currentDns) {
+  // Build options from named DNS servers
+  const opts = [
+    `<option value="">– kein DNS-Schutz</option>`,
+    ...dnsServers.map(([name, ip]) =>
+      `<option value="${ip}"${ip===currentDns?' selected':''}>${name} (${ip})</option>`
+    ),
+    currentDns && !dnsServers.find(([,ip])=>ip===currentDns)
+      ? `<option value="${currentDns}" selected>Custom: ${currentDns}</option>` : '',
+  ].join('');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:#0f1117cc;z-index:300;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `<div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:10px;padding:24px;min-width:320px">
+    <div style="font-weight:700;margin-bottom:12px;color:#63b3ed">DNS-Leak-Schutz: ${gwName}</div>
+    <select id="gw-dns-sel" style="width:100%;margin-bottom:14px">${opts}</select>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="this.closest('div[style*=fixed]').remove()">Abbrechen</button>
+      <button class="btn primary" id="gw-dns-ok">Speichern</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('#gw-dns-ok').onclick = async () => {
+    const val = overlay.querySelector('#gw-dns-sel').value;
+    overlay.remove();
+    try {
+      const r = await apiFetch(`/api/gateways/${encodeURIComponent(gwName)}/dns`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({dns_ip: val})
+      });
+      if (!r) return;
+      const d = await r.json();
+      if (d.ok) {
+        const gw = gateways.find(g => g.name === gwName);
+        if (gw) gw.dns_ip = val || null;
+        toast(`DNS ${gwName}: ${val || 'deaktiviert'}`);
+        renderAll();
+      } else { toast('Fehler: ' + (d.error||'unbekannt'), true); }
+    } catch(e) { toast('Netzwerkfehler', true); }
+  };
+}
+
+// --- Helpers ---
+
+function getSubnetLabel(ip) {
+  const parts = ip.split('.').map(Number);
+  if (parts[0] === 172 && parts[1] === 16) {
+    const third = parts[2];
+    if (third >= 0 && third <= 3) return '172.16.0/22';
+    return `172.16.${third}/24`;
+  }
+  return ip.split('.').slice(0,3).join('.') + '/24';
+}
+
+function fmtBytes(b) {
+  if (!b) return '0B';
+  if (b < 1024) return b + 'B';
+  if (b < 1048576) return (b/1024).toFixed(1) + 'K';
+  if (b < 1073741824) return (b/1048576).toFixed(1) + 'M';
+  return (b/1073741824).toFixed(2) + 'G';
 }
 
 function timeAgo(ts) {
   const diff = Math.round(Date.now()/1000 - ts);
-  if (diff < 60) return `vor ${diff}s`;
-  if (diff < 3600) return `vor ${Math.round(diff/60)}m`;
-  if (diff < 86400) return `vor ${Math.round(diff/3600)}h`;
-  return `vor ${Math.round(diff/86400)}d`;
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.round(diff/60)}m`;
+  if (diff < 86400) return `${Math.round(diff/3600)}h`;
+  return `${Math.round(diff/86400)}d`;
 }
 
 function esc(s) {
@@ -360,8 +1260,202 @@ function toast(msg, error=false) {
   el._t = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-document.getElementById('search').addEventListener('input', renderClients);
+// --- Mullvad ---
 
+let mullvadCountries = [];
+let mullvadConnections = [];
+let mullvadDevices = [];
+
+async function renderMullvad() {
+  document.getElementById('mullvad-not-configured').style.display = mullvadConfigured ? 'none' : 'block';
+  const createForm = document.getElementById('mullvad-create-device-form');
+  if (createForm) createForm.style.display = mullvadConfigured && isAdmin() ? '' : 'none';
+  await Promise.all([loadMullvadDevices(), loadMullvadConnections(), loadMullvadCountries()]);
+}
+
+async function loadMullvadDevices() {
+  try {
+    const r = await apiFetch('/api/mullvad/devices');
+    if (!r) return;
+    mullvadDevices = await r.json();
+    renderMullvadDevices();
+    renderMullvadDeviceSelect();
+    document.getElementById('btn-mullvad-connect').disabled = !mullvadDevices.length || !mullvadConfigured || !isAdmin();
+  } catch(e) {}
+}
+
+function renderMullvadDevices() {
+  const el = document.getElementById('mullvad-devices-list');
+  if (!mullvadDevices.length) {
+    el.innerHTML = '<span style="color:#4a5568">Keine Geräte vorhanden. Erstelle ein Gerät um Mullvad nutzen zu können.</span>';
+    return;
+  }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+    <thead><tr style="color:#4a5568;border-bottom:1px solid #2d3748">
+      <th style="text-align:left;padding:4px 8px">Name</th>
+      <th style="text-align:left;padding:4px 8px">Public Key</th>
+      <th style="text-align:left;padding:4px 8px">Mullvad-IP</th>
+      ${isAdmin() ? '<th style="padding:4px 8px"></th>' : ''}
+    </tr></thead>
+    <tbody>${mullvadDevices.map(d => `
+    <tr style="border-bottom:1px solid #1e2535">
+      <td style="padding:5px 8px;color:#9ae6b4;font-family:monospace">${esc(d.name)}</td>
+      <td style="padding:5px 8px;color:#a0aec0;font-family:monospace;font-size:0.75rem">${esc(d.public_key.slice(0,20))}...</td>
+      <td style="padding:5px 8px;color:#68d391;font-family:monospace">${esc(d.address)}</td>
+      ${isAdmin() ? `<td style="padding:5px 8px"><button class="btn danger" style="padding:2px 8px;font-size:0.78rem" onclick="mullvadDeleteDevice('${esc(d.name)}')">Löschen</button></td>` : ''}
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderMullvadDeviceSelect() {
+  const sel = document.getElementById('mullvad-device-sel');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Gerät wählen...</option>' +
+    mullvadDevices.map(d => `<option value="${esc(d.name)}"${d.name===prev?' selected':''}>${esc(d.name)} (${esc(d.address)})</option>`).join('');
+}
+
+async function mullvadCreateDevice() {
+  const input = document.getElementById('mullvad-device-name-input');
+  const name = input.value.trim();
+  if (!name) { toast('Bitte einen Gerätenamen eingeben', true); return; }
+  const btn = document.getElementById('btn-mullvad-create-device');
+  btn.disabled = true; btn.textContent = 'Erstelle...';
+  try {
+    const r = await apiFetch('/api/mullvad/devices', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name})
+    });
+    if (!r) { btn.disabled = false; btn.textContent = '+ Gerät erstellen'; return; }
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Gerät "${d.name}" erstellt – Mullvad-IP: ${d.address}`);
+      input.value = '';
+      await loadMullvadDevices();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+  btn.disabled = false; btn.textContent = '+ Gerät erstellen';
+}
+
+async function mullvadDeleteDevice(name) {
+  if (!confirm(`Gerät "${name}" wirklich löschen?\n\nDer WireGuard-Key wird bei Mullvad deregistriert.`)) return;
+  try {
+    const r = await apiFetch(`/api/mullvad/devices/${encodeURIComponent(name)}`, {method: 'DELETE'});
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Gerät "${name}" gelöscht`);
+      await loadMullvadDevices();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+async function loadMullvadConnections() {
+  try {
+    const r = await apiFetch('/api/mullvad/connections');
+    if (!r) return;
+    mullvadConnections = await r.json();
+    renderMullvadConnections();
+  } catch(e) {}
+}
+
+function renderMullvadConnections() {
+  const el = document.getElementById('mullvad-connections');
+  if (!mullvadConnections.length) {
+    el.innerHTML = '<span style="color:#4a5568">Keine aktiven Mullvad-Verbindungen</span>';
+    return;
+  }
+  el.innerHTML = mullvadConnections.map(c => `
+    <div class="mullvad-conn">
+      <span class="mullvad-cc">${esc(c.interface)}</span>
+      <span class="mullvad-desc">${esc(c.description || c.country_code.toUpperCase())}${c.device_name ? ` <span style="color:#4a5568;font-size:0.78rem">(${esc(c.device_name)})</span>` : ''}</span>
+      ${isAdmin() ? `<button class="btn danger" onclick="mullvadDisconnect('${esc(c.country_code)}')">Trennen</button>` : ''}
+    </div>`).join('');
+}
+
+async function loadMullvadCountries() {
+  const sel = document.getElementById('mullvad-country-sel');
+  if (!mullvadConfigured) return;
+  try {
+    if (mullvadCountries.length) { renderMullvadCountrySelect(); return; }
+    sel.innerHTML = '<option>Lade Länderliste von Mullvad...</option>';
+    const r = await apiFetch('/api/mullvad/countries');
+    if (!r) return;
+    const d = await r.json();
+    if (d.error) { sel.innerHTML = `<option>Fehler: ${esc(d.error)}</option>`; return; }
+    mullvadCountries = d;
+    renderMullvadCountrySelect();
+  } catch(e) {
+    sel.innerHTML = '<option>Mullvad API nicht erreichbar</option>';
+  }
+}
+
+function renderMullvadCountrySelect() {
+  const sel = document.getElementById('mullvad-country-sel');
+  const connected = new Set(mullvadConnections.map(c => c.country_code));
+  sel.innerHTML = '<option value="">Land wählen...</option>' +
+    mullvadCountries.map(c =>
+      `<option value="${esc(c.code)}"${connected.has(c.code) ? ' disabled' : ''}>${esc(c.name)} (${esc(c.code)})${connected.has(c.code) ? ' ✓' : ''}</option>`
+    ).join('');
+}
+
+async function mullvadConnect() {
+  const deviceSel = document.getElementById('mullvad-device-sel');
+  const ccSel = document.getElementById('mullvad-country-sel');
+  const device_name = deviceSel.value;
+  const cc = ccSel.value;
+  if (!device_name) { toast('Bitte ein Gerät wählen', true); return; }
+  if (!cc) { toast('Bitte ein Land wählen', true); return; }
+  const btn = document.getElementById('btn-mullvad-connect');
+  btn.disabled = true;
+  btn.textContent = 'Verbinde...';
+  try {
+    const r = await apiFetch('/api/mullvad/connect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({device_name, country_code: cc})
+    });
+    if (!r) { btn.disabled = false; btn.textContent = 'Verbinden'; return; }
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Mullvad ${cc.toUpperCase()} verbunden via "${d.device_name}" – Server: ${d.server}`);
+      mullvadCountries = [];
+      await loadAll();
+      await loadMullvadConnections();
+      renderMullvadCountrySelect();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+  btn.disabled = !mullvadDevices.length || !mullvadConfigured || !isAdmin();
+  btn.textContent = 'Verbinden';
+}
+
+async function mullvadDisconnect(cc) {
+  if (!confirm(`Mullvad mu${cc} wirklich trennen?`)) return;
+  try {
+    const r = await apiFetch(`/api/mullvad/${encodeURIComponent(cc)}`, {method: 'DELETE'});
+    if (!r) return;
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Mullvad mu${cc} getrennt`);
+      mullvadCountries = [];
+      await loadAll();
+      await loadMullvadConnections();
+      renderMullvadCountrySelect();
+    } else {
+      toast('Fehler: ' + (d.error || 'unbekannt'), true);
+    }
+  } catch(e) { toast('Netzwerkfehler', true); }
+}
+
+// --- Init ---
+setView('gateway');
 loadAll();
 setInterval(loadAll, 30000);
 </script>

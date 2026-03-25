@@ -4,7 +4,9 @@ mod config;
 mod db;
 mod discovery;
 mod homeassistant;
+mod interfaces;
 mod monitor;
+mod mullvad;
 mod nftables;
 mod routing;
 mod scripts;
@@ -71,39 +73,55 @@ async fn main() -> Result<()> {
 
     // Sessions für Auth
     let sessions = auth::new_sessions();
+    let viewer_sessions = auth::new_sessions();
+
+    // DNS servers: aus config.toml [dns.servers], alphabetisch sortiert
+    let mut dns_servers: Vec<(String, String)> = cfg.dns.servers.iter()
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    dns_servers.sort_by(|a, b| a.0.cmp(&b.0));
 
     // Shared app state for API
     let app_state = api::AppState {
         pool: pool.clone(),
         status: status.clone(),
         default_gw: cfg.defaults.gateway.clone(),
+        scan_subnets: cfg.networks.scan_subnets.clone(),
         scan_tx: reapply_notify.clone(),
         sessions,
+        viewer_sessions,
         auth_enabled: cfg.auth.enabled,
         username: cfg.auth.username.clone(),
         password_hash: cfg.auth.password_hash.clone(),
+        viewer_username: cfg.auth.viewer_username.clone(),
+        viewer_password_hash: cfg.auth.viewer_password_hash.clone(),
+        kiosk_token: cfg.auth.kiosk_token.clone(),
+        dns_servers,
+        mullvad_config: cfg.mullvad.clone(),
     };
 
     // Initial routing apply from DB
     if !args.dry_run {
-        apply_routing(&pool, &cfg.defaults.gateway).await;
+        apply_routing(&pool, &cfg.defaults.gateway, &cfg.dns.unbound_user).await;
     }
 
     // Spawn tasks
     let pool_mon = pool.clone();
     let mon_cfg = cfg.monitoring.clone();
     let status_mon = status.clone();
+    let scan_tx_mon = reapply_notify.clone();
     tokio::spawn(async move {
-        monitor::run_monitor_loop(pool_mon, mon_cfg, ha_client, status_mon).await;
+        monitor::run_monitor_loop(pool_mon, mon_cfg, ha_client, status_mon, scan_tx_mon).await;
     });
 
     let pool_disc = pool.clone();
     let disc_cfg = cfg.networks.clone();
     let disc_notify = reapply_notify.clone();
     let default_gw_disc = cfg.defaults.gateway.clone();
+    let unbound_user_disc = cfg.dns.unbound_user.clone();
     let dry_run = args.dry_run;
     tokio::spawn(async move {
-        run_discovery_loop(pool_disc, disc_cfg, disc_notify, default_gw_disc, dry_run).await;
+        run_discovery_loop(pool_disc, disc_cfg, disc_notify, default_gw_disc, unbound_user_disc, dry_run).await;
     });
 
     let pool_traf = pool.clone();
@@ -112,21 +130,42 @@ async fn main() -> Result<()> {
         traffic::run_traffic_loop(pool_traf, influx_cfg).await;
     });
 
+    let influx_cfg_iface = cfg.influxdb.clone();
+    tokio::spawn(async move {
+        interfaces::run_interface_loop(influx_cfg_iface).await;
+    });
+
     // Reapply routing when notified (gateway changes from API)
     let pool_reapply = pool.clone();
     let default_gw_reapply = cfg.defaults.gateway.clone();
+    let unbound_user_reapply = cfg.dns.unbound_user.clone();
     let notify_reapply = reapply_notify.clone();
     tokio::spawn(async move {
         loop {
             notify_reapply.notified().await;
             if !dry_run {
-                apply_routing(&pool_reapply, &default_gw_reapply).await;
+                apply_routing(&pool_reapply, &default_gw_reapply, &unbound_user_reapply).await;
             }
         }
     });
 
     // HTTP(S) API
     let router = api::build_router(app_state);
+
+    // Optionaler zweiter HTTP-Listener (ohne TLS), z.B. für Kiosk im LAN
+    if let Some(http_addr) = &cfg.api.listen_http {
+        let http_router = router.clone();
+        let http_addr = http_addr.clone();
+        tokio::spawn(async move {
+            match tokio::net::TcpListener::bind(&http_addr).await {
+                Ok(listener) => {
+                    info!("Stellwerk HTTP (kiosk) listening on http://{}", http_addr);
+                    let _ = axum::serve(listener, http_router).await;
+                }
+                Err(e) => warn!("HTTP kiosk listener konnte nicht gestartet werden ({}): {}", http_addr, e),
+            }
+        });
+    }
 
     if cfg.tls.enabled {
         serve_tls(router, &cfg.tls, &cfg.api.listen).await?;
@@ -140,7 +179,16 @@ async fn main() -> Result<()> {
 }
 
 /// Apply all routing rules from DB (nftables + iproute2 + write scripts)
-async fn apply_routing(pool: &sqlx::SqlitePool, default_gw: &str) {
+async fn apply_routing(pool: &sqlx::SqlitePool, default_gw: &str, unbound_user: &str) {
+    // Lade unbound_gateway aus DB (überschreibt config.toml)
+    let unbound_gateway = db::get_setting(pool, "unbound-gateway").await.ok().flatten();
+    let dns = config::DnsConfig {
+        gateway: unbound_gateway,
+        unbound_user: unbound_user.to_string(),
+        gateway_dns: std::collections::HashMap::new(),
+        servers: std::collections::HashMap::new(),
+    };
+
     let clients = match db::list_active_clients(pool).await {
         Ok(c) => c,
         Err(e) => { warn!("Failed to list clients: {}", e); return; }
@@ -149,15 +197,22 @@ async fn apply_routing(pool: &sqlx::SqlitePool, default_gw: &str) {
         Ok(g) => g,
         Err(e) => { warn!("Failed to list gateways: {}", e); return; }
     };
+    let networks = match db::list_networks(pool).await {
+        Ok(n) => n,
+        Err(e) => { warn!("Failed to list networks: {}", e); vec![] }
+    };
 
-    if let Err(e) = nftables::apply_all(&clients, &gateways, default_gw).await {
+    if let Err(e) = nftables::apply_all(&clients, &gateways, &networks, default_gw, &dns).await {
         warn!("nftables apply failed: {}", e);
     }
-    if let Err(e) = routing::apply_all(&clients, &gateways, default_gw).await {
+    if let Err(e) = routing::apply_all(&clients, &gateways, &networks, default_gw, &dns).await {
         warn!("iproute2 apply failed: {}", e);
     }
-    if let Err(e) = scripts::write_all(&clients, &gateways, default_gw).await {
+    if let Err(e) = scripts::write_all(&clients, &gateways, default_gw, &dns).await {
         warn!("Script write failed: {}", e);
+    }
+    if let Err(e) = scripts::configure_unbound(&dns, &gateways).await {
+        warn!("Unbound config failed: {}", e);
     }
 }
 
@@ -166,6 +221,7 @@ async fn run_discovery_loop(
     cfg: config::NetworksConfig,
     _notify: Arc<Notify>,
     default_gw: String,
+    unbound_user: String,
     dry_run: bool,
 ) {
     // Initial scan on startup (short delay)
@@ -194,8 +250,14 @@ async fn run_discovery_loop(
                         let _ = db::upsert_client(&pool, &host.ip, host.mac.as_deref(), None).await;
                     }
                 }
+                // Map IPv6 addresses via NDP table (MAC → IPv6, display only)
+                if let Ok(ndp) = discovery::read_ndp_table().await {
+                    for (mac, ipv6) in &ndp {
+                        let _ = db::update_ipv6_by_mac(&pool, mac, ipv6).await;
+                    }
+                }
                 if !dry_run {
-                    apply_routing(&pool, &default_gw).await;
+                    apply_routing(&pool, &default_gw, &unbound_user).await;
                 }
             }
             Err(e) => warn!("Discovery error: {}", e),
