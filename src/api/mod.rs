@@ -35,6 +35,8 @@ pub struct AppState {
     pub dns_servers: Vec<(String, String)>,
     /// Mullvad-Konfiguration (private key + address) aus config.toml
     pub mullvad_config: Option<crate::config::MullvadConfig>,
+    /// HomeAssistant-Client für Stargate-Steuerung (optional)
+    pub ha_client: Option<crate::homeassistant::HomeAssistantClient>,
 }
 
 async fn require_auth(
@@ -74,6 +76,7 @@ async fn require_write(
 pub fn build_router(state: AppState) -> Router {
     let read_only = Router::new()
         .route("/api/status", get(routes::get_status))
+        .route("/api/stargate/status", get(routes::get_stargate_status))
         .route("/api/me", get(routes::get_me))
         .route("/api/clients", get(routes::list_clients))
         .route("/api/clients/:ip", get(routes::get_client))
@@ -107,6 +110,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/mullvad/devices/:name", delete(routes::mullvad_delete_device))
         .route("/api/mullvad/connect", post(routes::mullvad_connect))
         .route("/api/mullvad/:cc", delete(routes::mullvad_disconnect))
+        .route("/api/stargate/on", post(routes::stargate_on))
+        .route("/api/stargate/off", post(routes::stargate_off))
         .layer(middleware::from_fn_with_state(state.clone(), require_write));
 
     Router::new()

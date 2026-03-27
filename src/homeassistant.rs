@@ -35,6 +35,10 @@ impl HomeAssistantClient {
         self.call_service("switch", "turn_off", &self.starlink_entity.clone()).await
     }
 
+    pub async fn get_starlink_state(&self) -> Result<String> {
+        self.get_state(&self.starlink_entity.clone()).await
+    }
+
     pub async fn get_state(&self, entity_id: &str) -> Result<String> {
         let url = format!("{}/api/states/{}", self.base_url, entity_id);
         let resp = self.http
