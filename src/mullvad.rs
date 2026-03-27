@@ -246,11 +246,12 @@ pub async fn write_wg_config(country_code: &str, config: &str) -> Result<()> {
     let _ = Command::new("chmod").args(["600", &staging]).status().await;
 
     // Aktive Config nach /etc/wireguard/ (stellwerk hat ACL-Schreibrecht)
+    // 640 statt 600: wg-quick läuft als root ohne CAP_DAC_OVERRIDE und braucht Leserecht
     let active = format!("{}/mu{}.conf", WG_CONFIG_DIR, country_code);
     tokio::fs::write(&active, config)
         .await
         .with_context(|| format!("Konnte WireGuard-Config nicht schreiben: {}", active))?;
-    let _ = Command::new("chmod").args(["600", &active]).status().await;
+    let _ = Command::new("chmod").args(["640", &active]).status().await;
     info!("WireGuard config geschrieben: {}", active);
     Ok(())
 }

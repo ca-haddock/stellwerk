@@ -70,6 +70,7 @@ async fn main() -> Result<()> {
     } else {
         None
     };
+    let ha_client_api = ha_client.clone();
 
     // Sessions für Auth
     let sessions = auth::new_sessions();
@@ -98,6 +99,7 @@ async fn main() -> Result<()> {
         kiosk_token: cfg.auth.kiosk_token.clone(),
         dns_servers,
         mullvad_config: cfg.mullvad.clone(),
+        ha_client: ha_client_api,
     };
 
     // Initial routing apply from DB

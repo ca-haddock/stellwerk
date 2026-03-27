@@ -16,6 +16,9 @@ sudo ./test_start.sh
 
 # Manual build (no install, no version bump)
 cargo build --release
+
+# Lint
+cargo clippy
 ```
 
 Service management:
@@ -23,6 +26,18 @@ Service management:
 systemctl enable stellwerk    # enable autostart
 systemctl status stellwerk    # check status
 journalctl -u stellwerk -f    # follow logs
+```
+
+Development flags:
+```bash
+# Run without applying nftables/iproute2 changes (safe for testing)
+stellwerk --dry-run
+
+# Override config path (default: /etc/stellwerk/config.toml)
+stellwerk --config /home/stellwerk/config.toml
+
+# Adjust log verbosity
+RUST_LOG=stellwerk=debug stellwerk
 ```
 
 ## Architecture Overview
