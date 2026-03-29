@@ -19,6 +19,8 @@ cargo build --release
 
 # Lint
 cargo clippy
+
+# No unit tests exist in this codebase
 ```
 
 Service management:
@@ -50,9 +52,11 @@ Stellwerk is a Linux router daemon written in Rust. It controls the **egress gat
 ### Startup Sequence
 
 1. Parse CLI args (`--config`, `--dry-run`) → load TOML config → open SQLite (WAL mode, run migrations)
-2. Call `apply_routing()`: `nftables::apply_all` → `routing::apply_all` → `scripts::write_all`
-3. Start HTTP(S) server (axum + tokio-rustls; **not** axum-server – incompatible with hyper 1.x)
-4. Spawn background tasks
+2. Seed DNS: write `[dns].gateway` → `system_settings`, write `[dns.gateway_dns]` → `gateways.dns_ip` (config.toml wins on every start)
+3. Call `apply_routing()`: `nftables::apply_all` → `routing::apply_all` → `scripts::write_all` (LAN clients can route before Mullvad is up)
+4. Bring up Mullvad WireGuard interfaces in parallel background tasks (`startup_bring_up_mullvad`)
+5. Start HTTP(S) server (axum + tokio-rustls; **not** axum-server – incompatible with hyper 1.x)
+6. Spawn background tasks
 
 ### Background Tasks
 
@@ -88,8 +92,10 @@ Table `inet stellwerk` is **atomically replaced** on every apply:
 ### Database Schema (`db.rs`)
 
 Key tables:
-- **`clients`** – ip (PK), mac, hostname, label, group_name, gateway, first_seen, last_seen, active, ipv6, dns_ip
+- **`clients`** – ip (PK), mac, hostname, label, group_name, gateway, first_seen, last_seen, active, ipv6, dns_ip, autofallback (0/1), original_gateway (set during failover, NULL when not in fallback)
 - **`gateways`** – name (PK), table_name (iproute2 table), interface, src_ip (SNAT), description, mark, dns_ip, device_name
+- **`groups`** – name (PK), gateway, fallback_gateway, description, fallback_active; clients are assigned to groups for bulk gateway management with optional HA failover
+- **`interface_meta`** – name (PK), role (`extern`/`intern`), enabled; display metadata for network interfaces shown in UI
 - **`traffic`** – per-client traffic deltas (60s buckets)
 - **`networks`** – subnets with default_gateway, internal_only, gateway_only, dns_ip
 - **`mullvad_devices`** – WireGuard key pairs for Mullvad VPN devices
@@ -100,35 +106,52 @@ The `dns_ip` column on clients, gateways, and networks overrides the DNS server 
 
 Gateways are seeded with `INSERT OR IGNORE` on startup (`seed_gateways`). Adding a new gateway means adding it there.
 
+### Database Migrations (`db.rs`)
+
+Migrations run inline in `run_migrations()` on every startup — no migration files. The initial schema uses `CREATE TABLE IF NOT EXISTS`. New columns are added as idempotent `ALTER TABLE ... ADD COLUMN` statements with `.ok()` (errors silently ignored if the column already exists). When adding a new column, append it to that list.
+
+### Auth (`auth.rs`)
+
+Session tokens stored in `Arc<RwLock<HashSet<String>>>` (in-memory, not persisted). Two sets: admin sessions and viewer sessions. `extract_session_token` reads from cookie `session=<token>` or `Authorization: Bearer` header. Kiosk token is a fixed pre-configured value checked separately.
+
 ### API (`api/mod.rs`, `api/routes.rs`)
 
-Two-tier auth via `Arc<RwLock<HashSet<String>>>` session tokens (in-memory):
-- **Admin** – full read/write
-- **Viewer** – read-only
-- **Kiosk** – passwordless, pre-set token in config; served on optional `listen_http` port
+Router split in `build_router()`: public routes (login, kiosk) → `read_only` layer (viewers + admins via `require_auth`) → `write_only` layer (admins only via `require_write`). Middleware checks the session token from either `Cookie: session=<token>` or `Authorization: Bearer <token>`.
 
-Auth via cookie (`session=<token>`) or `Authorization: Bearer` header. Passwords stored as SHA-256 hashes (no salt) in config.toml.
+Three auth tiers:
+- **Admin** – full read/write
+- **Viewer** – read-only (all GET routes)
+- **Kiosk** – passwordless, fixed token in config; served on optional `listen_http` port
+
+Passwords stored as SHA-256 hashes (no salt) in config.toml:
 ```bash
 echo -n "mypassword" | sha256sum | awk '{print $1}'
 ```
 
-Key API routes beyond CRUD:
+Key API routes:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/scan` | Trigger discovery + reapply routing |
+| GET | `/api/clients` | List clients; supports `?group=<name>` and `?gateway=<name>` filters |
 | PUT | `/api/clients/:ip/gateway` | Change client gateway → triggers reapply |
 | PUT | `/api/clients/:ip/dns` | Set per-client DNS server |
+| PUT | `/api/clients/:ip/autofallback` | Enable/disable per-client gateway auto-fallback |
+| GET | `/api/groups` | List all groups (viewer) |
+| PUT | `/api/groups/:name` | Create/update group (with `gateway` + `fallback_gateway`) |
+| DELETE | `/api/groups/:name` | Delete group |
+| POST | `/api/groups/:name/apply` | Apply group's gateway to all clients in the group |
 | PUT | `/api/gateways/:name/dns` | Set per-gateway DNS server |
-| POST | `/api/interfaces/connect` | Bring up a generic WireGuard interface as gateway |
-| DELETE | `/api/interfaces/:name` | Tear down gateway interface |
+| PUT | `/api/ifaces/:name` | Set interface metadata (role, enabled) |
+| POST | `/api/scan` | Trigger discovery + reapply routing |
+| POST | `/api/wg/sync` | Sync WireGuard configs from DB to disk |
+| GET/POST/DELETE | `/api/stargate/*` | HomeAssistant Stargate switch control |
 | POST | `/api/mullvad/devices` | Generate keypair + register with Mullvad |
 | GET | `/api/mullvad/devices` | List registered Mullvad devices |
 | DELETE | `/api/mullvad/devices/:name` | Deregister key + remove device |
 | GET | `/api/mullvad/countries` | Fetch available Mullvad countries |
 | GET | `/api/mullvad/connections` | List active Mullvad gateways |
 | POST | `/api/mullvad/connect` | Connect to a Mullvad country (pick best relay) |
-| DELETE | `/api/mullvad/connect/:cc` | Disconnect Mullvad country interface |
+| DELETE | `/api/mullvad/:cc` | Disconnect Mullvad country interface |
 
 API calls that change routing call `scan_tx.notify_one()` to wake the reapply loop.
 
@@ -147,14 +170,25 @@ Optional. Requires `[mullvad] account = "..."` in config. Registers WireGuard ke
 - Interfaces named `mu<cc>` (e.g. `mude`, `muus`)
 - Routing tables allocated from 220 upward, marks from 220 upward
 - Configs written to `/etc/wireguard/mu<cc>.conf` and staged in `/home/stellwerk/wg/`
-- `wg-quick up/down` called directly (CAP_NET_ADMIN inherited from service)
-- `mullvad.rs` also provides helpers for generic interfaces: `add_rt_table_entry_for`, `add_default_route_for`, `iface_exists`
+- `bring_up`/`bring_down` use `sudo systemctl start/stop wg-quick@mu<cc>` — requires sudoers entry: `stellwerk ALL=(root) NOPASSWD: /usr/bin/systemctl start wg-quick@*, /usr/bin/systemctl stop wg-quick@*`
+- `mullvad.rs` also provides helpers for generic interfaces: `add_rt_table_entry_for`, `add_default_route_for`, `iface_exists`, `is_wireguard_interface` (checks `ip link show type wireguard`)
+
+### HomeAssistant Integration (`homeassistant.rs`)
+
+`HomeAssistantClient` wraps `reqwest` calls to the HA REST API. Used in two places:
+- `monitor.rs` – automatic failover (calls switch service on uplink failure)
+- `api/routes.rs` – manual stargate control via `/api/stargate/on|off|status`
+
+Requires `[homeassistant] enabled = true` in config. The client is built once at startup and stored in `AppState`.
 
 ### Monitor & Failover (`monitor.rs`)
 
-On ppp0 failure: calls HomeAssistant API (`POST /api/services/switch/turn_on`) to enable Starlink fallback. Requires `[homeassistant] enabled = true`.
+Three independent failover mechanisms run in the same 30s loop:
 
-GRE failover (`gre_failover_enabled = true`): on GRE failure, rewrites default route in GRE routing tables to use ppp0 as fallback. Configured via `gre_interface` and `gre_nexthop`.
+1. **ppp0 failover** – on ppp0 failure, calls HomeAssistant API to enable Starlink. Requires `[homeassistant] enabled = true`.
+2. **GRE failover** (`gre_failover_enabled = true`) – on GRE interface failure, rewrites the default route in all GRE routing tables to use ppp0. Restores on recovery. Configured via `gre_interface` and `gre_nexthop`.
+3. **Per-client autofallback** – clients with `autofallback = 1` are monitored by their gateway's interface. On failure, `original_gateway` is saved and `gateway` is set to `ppp0`; restored when the interface recovers. Triggers `scan_tx.notify_one()`.
+4. **Group failover** (`check_group_failover`) – groups with a `fallback_gateway` are monitored per interface. Interface state is cached within each loop iteration to avoid redundant pings. On failure, `fallback_active` is set (DB) and `scan_tx.notify_one()` fires; restored on recovery. State key in `iface_was_up`: `grp:<group_name>`.
 
 ### Configuration (`config.rs`, `config/default.toml`)
 
