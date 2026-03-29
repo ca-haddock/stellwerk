@@ -829,8 +829,10 @@ function renderGroupView(filtered) {
       const curGw = grpData?.gateway || '';
       const curFb = grpData?.fallback_gateway || '';
       const isFallback = grpData?.fallback_active;
+      const effectiveGw = isFallback ? curFb : curGw;
       const fbIndicator = isFallback
-        ? `<span style="color:#fc8181;font-size:0.72rem;margin-left:6px">⚡ Fallback aktiv</span>` : '';
+        ? `<span style="color:#fc8181;font-size:0.72rem;margin-left:6px">⚡${esc(curFb)} → ${esc(curGw)}</span>`
+        : (curGw ? `<span style="color:#718096;font-size:0.72rem;margin-left:6px">${esc(curGw)}</span>` : '');
       groupControls = `
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto" onclick="event.stopPropagation()">
           ${fbIndicator}
