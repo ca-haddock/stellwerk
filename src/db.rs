@@ -19,6 +19,7 @@ pub struct Client {
     pub dns_ip: Option<String>,
     pub autofallback: i64,
     pub original_gateway: Option<String>,
+    pub fallback_gateway: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -206,6 +207,10 @@ async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         .await
         .ok();
     sqlx::query("ALTER TABLE clients ADD COLUMN original_gateway TEXT")
+        .execute(pool)
+        .await
+        .ok();
+    sqlx::query("ALTER TABLE clients ADD COLUMN fallback_gateway TEXT")
         .execute(pool)
         .await
         .ok();
@@ -457,22 +462,29 @@ pub async fn set_gateway_dns_ip(pool: &SqlitePool, name: &str, dns_ip: Option<&s
     Ok(result.rows_affected() > 0)
 }
 
-pub async fn set_client_autofallback(pool: &SqlitePool, ip: &str, enabled: bool) -> Result<bool> {
-    let result = sqlx::query("UPDATE clients SET autofallback = ?1 WHERE ip = ?2")
+/// Setzt autofallback + optionales Fallback-Gateway auf einem Client.
+/// `fallback_gateway = None` → kein Fallback (autofallback=0, fallback_gateway=NULL).
+/// `fallback_gateway = Some("ppp0")` → autofallback=1, fallback_gateway="ppp0".
+pub async fn set_client_autofallback(pool: &SqlitePool, ip: &str, fallback_gateway: Option<&str>) -> Result<bool> {
+    let enabled = fallback_gateway.is_some();
+    let result = sqlx::query(
+        "UPDATE clients SET autofallback = ?1, fallback_gateway = ?2 WHERE ip = ?3"
+    )
         .bind(enabled as i64)
+        .bind(fallback_gateway)
         .bind(ip)
         .execute(pool)
         .await?;
     Ok(result.rows_affected() > 0)
 }
 
-/// Switches autofallback clients on the given gateways to ppp0.
+/// Switches autofallback clients on the given gateways to their configured fallback_gateway.
 /// Only affects clients that are not already in fallback mode (original_gateway IS NULL).
 pub async fn activate_fallback_for_clients(pool: &SqlitePool, gw_names: &[&str]) -> Result<u64> {
     let mut total = 0u64;
     for gw in gw_names {
         let result = sqlx::query(
-            "UPDATE clients SET original_gateway = gateway, gateway = 'ppp0'
+            "UPDATE clients SET original_gateway = gateway, gateway = COALESCE(fallback_gateway, 'ppp0')
              WHERE autofallback = 1 AND original_gateway IS NULL AND gateway = ?1"
         )
         .bind(gw)

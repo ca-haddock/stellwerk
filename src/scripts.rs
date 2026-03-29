@@ -196,6 +196,12 @@ pub async fn configure_unbound(dns: &DnsConfig, gateways: &[Gateway]) -> Result<
         None => String::new(),
     };
 
+    // Nur neu starten wenn sich der Inhalt geändert hat
+    let existing = tokio::fs::read_to_string(UNBOUND_STELLWERK_CONF).await.unwrap_or_default();
+    if existing == content {
+        return Ok(());
+    }
+
     tokio::fs::write(UNBOUND_STELLWERK_CONF, &content).await?;
 
     let status = tokio::process::Command::new("systemctl")

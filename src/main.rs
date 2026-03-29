@@ -102,9 +102,24 @@ async fn main() -> Result<()> {
         ha_client: ha_client_api,
     };
 
-    // Initial routing apply from DB
+    // DNS aus config.toml in DB seeden (config.toml gewinnt bei jedem Start)
+    if let Some(ref gw) = cfg.dns.gateway {
+        let _ = db::set_setting(&pool, "unbound-gateway", gw).await;
+        info!("DNS: unbound-gateway = {}", gw);
+    }
+    for (gw_name, dns_ip) in &cfg.dns.gateway_dns {
+        let _ = db::set_gateway_dns_ip(&pool, gw_name, Some(dns_ip.as_str())).await;
+        info!("DNS: gateway {} → {}", gw_name, dns_ip);
+    }
+
+    // Initial routing apply from DB (sofort – LAN-Clients können routen bevor Mullvad oben ist)
     if !args.dry_run {
         apply_routing(&pool, &cfg.defaults.gateway, &cfg.dns.unbound_user).await;
+    }
+
+    // Mullvad WireGuard interfaces hochfahren (parallel, im Hintergrund)
+    if !args.dry_run {
+        startup_bring_up_mullvad(&pool).await;
     }
 
     // Spawn tasks
@@ -178,6 +193,38 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Fährt beim Start alle Mullvad-WireGuard-Interfaces hoch – parallel.
+async fn startup_bring_up_mullvad(pool: &sqlx::SqlitePool) {
+    let gateways = match db::list_gateways(pool).await {
+        Ok(g) => g,
+        Err(e) => { warn!("startup_bring_up_mullvad: DB-Fehler: {}", e); return; }
+    };
+
+    let mut handles = Vec::new();
+    for gw in gateways.iter().filter(|g| mullvad::is_mullvad_interface(&g.interface)) {
+        let cc = gw.interface[2..].to_string(); // "mude" → "de"
+        let iface = gw.interface.clone();
+        handles.push(tokio::spawn(async move {
+            if mullvad::is_up(&cc).await {
+                info!("Mullvad {}: Interface bereits oben", iface);
+                mullvad::add_default_route(&cc).await;
+                return;
+            }
+            info!("Mullvad {}: bringe Interface hoch...", iface);
+            match mullvad::bring_up(&cc).await {
+                Ok(()) => {
+                    mullvad::add_default_route(&cc).await;
+                    info!("Mullvad {}: erfolgreich hochgefahren", iface);
+                }
+                Err(e) => warn!("Mullvad {}: bring_up fehlgeschlagen: {}", iface, e),
+            }
+        }));
+    }
+    for h in handles {
+        let _ = h.await;
+    }
 }
 
 /// Apply all routing rules from DB (nftables + iproute2 + write scripts)

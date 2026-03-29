@@ -359,30 +359,33 @@ pub async fn remove_rt_table_entry(country_code: &str) -> Result<()> {
 // ── Interface lifecycle ───────────────────────────────────────────────────────
 
 pub async fn bring_up(country_code: &str) -> Result<()> {
-    let conf = format!("{}/mu{}.conf", WG_CONFIG_DIR, country_code);
-    // wg-quick erbt CAP_NET_ADMIN via AmbientCapabilities des stellwerk-Service
-    let status = Command::new("wg-quick")
-        .args(["up", &conf])
+    // systemd wg-quick@<iface> läuft als root – sauberer als sudo wg-quick direkt.
+    // Sudoers: stellwerk ALL=(root) NOPASSWD: /usr/bin/systemctl start wg-quick@*
+    let iface = interface_name(country_code);
+    let unit = format!("wg-quick@{}", iface);
+    let status = Command::new("sudo")
+        .args(["/usr/bin/systemctl", "start", &unit])
         .status()
         .await
-        .context("wg-quick nicht gefunden — ist wireguard-tools installiert?")?;
+        .context("systemctl start wg-quick@ fehlgeschlagen")?;
     if !status.success() {
-        anyhow::bail!("wg-quick up mu{} fehlgeschlagen", country_code);
+        anyhow::bail!("wg-quick up {} fehlgeschlagen", iface);
     }
-    info!("wg-quick up mu{}", country_code);
+    info!("wg-quick up {} (via systemd)", iface);
     Ok(())
 }
 
 pub async fn bring_down(country_code: &str) -> Result<()> {
-    let conf = format!("{}/mu{}.conf", WG_CONFIG_DIR, country_code);
-    let status = Command::new("wg-quick")
-        .args(["down", &conf])
+    let iface = interface_name(country_code);
+    let unit = format!("wg-quick@{}", iface);
+    let status = Command::new("sudo")
+        .args(["/usr/bin/systemctl", "stop", &unit])
         .status()
         .await?;
     if !status.success() {
-        warn!("wg-quick down mu{} fehlgeschlagen (Interface bereits down?)", country_code);
+        warn!("wg-quick down {} fehlgeschlagen (Interface bereits down?)", iface);
     }
-    info!("wg-quick down mu{}", country_code);
+    info!("wg-quick down {} (via systemd)", iface);
     Ok(())
 }
 
@@ -395,6 +398,16 @@ pub async fn is_up(country_code: &str) -> bool {
 pub async fn iface_exists(iface: &str) -> bool {
     Command::new("ip")
         .args(["link", "show", iface])
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+/// Prüft ob ein Interface vom Typ WireGuard ist (`ip link show type wireguard`).
+pub async fn is_wireguard_interface(iface: &str) -> bool {
+    Command::new("ip")
+        .args(["link", "show", iface, "type", "wireguard"])
         .status()
         .await
         .map(|s| s.success())

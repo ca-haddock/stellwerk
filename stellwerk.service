@@ -1,7 +1,7 @@
 [Unit]
 Description=Stellwerk Network Gateway Manager
 Documentation=https://github.com/local/stellwerk
-After=network-online.target
+After=network.target
 Wants=network-online.target
 
 [Service]
@@ -13,8 +13,11 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=stellwerk
 
-# Läuft als dedizierter User – CAP_NET_ADMIN via setcap auf dem Binary
+# CAP_NET_ADMIN via AmbientCapabilities – wird an Child-Prozesse (ip, nft, wg) vererbt.
+# NICHT setcap auf dem Binary verwenden – das löscht AmbientCaps beim Exec.
+# Kein CapabilityBoundingSet – sudo braucht CAP_SETUID/SETGID (für wg-helper.sh).
 User=stellwerk
+AmbientCapabilities=CAP_NET_ADMIN
 
 [Install]
 WantedBy=multi-user.target

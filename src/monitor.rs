@@ -44,8 +44,8 @@ pub async fn run_monitor_loop(
     loop {
         ticker.tick().await;
 
-        let ppp0_now = ping_through_interface(&cfg.ppp0_check_host, Some("ppp0")).await;
-        let gre_now = ping_through_interface(&cfg.gre_nexthop, Some(&cfg.gre_interface)).await;
+        let ppp0_now = http_check_through_interface(&cfg.check_url, Some("ppp0")).await;
+        let gre_now = http_check_through_interface(&cfg.check_url, Some(&cfg.gre_interface)).await;
 
         {
             let mut s = status.write().await;
@@ -89,6 +89,9 @@ pub async fn run_monitor_loop(
             &pool, &cfg, gre_now, &mut iface_was_up, &scan_tx
         ).await;
 
+        // Gruppen-Failover: Gateway-Interface pro Gruppe überwachen
+        check_group_failover(&pool, &cfg, gre_now, &mut iface_was_up, &scan_tx).await;
+
         ppp0_was_up = ppp0_now;
         gre_was_up = gre_now;
     }
@@ -122,11 +125,11 @@ async fn check_autofallback_gateways(
         let iface = &gw.interface;
         if checked.contains_key(iface) { continue; }
 
-        // For gre_fiber use the already-pinged result; for others ping now
+        // For gre_fiber use the already-checked result; for others HTTP-check now
         let now_up = if iface == &cfg.gre_interface {
             gre_now
         } else {
-            ping_through_interface("1.1.1.1", Some(iface)).await
+            http_check_through_interface(&cfg.check_url, Some(iface)).await
         };
         checked.insert(iface.clone(), now_up);
 
@@ -177,6 +180,74 @@ async fn check_autofallback_gateways(
     }
 
     // Update status
+}
+
+/// Überwacht Gateway-Interfaces aller Gruppen mit fallback_gateway und schaltet bei Ausfall um.
+async fn check_group_failover(
+    pool: &sqlx::SqlitePool,
+    cfg: &MonitoringConfig,
+    gre_now: bool,
+    iface_was_up: &mut HashMap<String, bool>,
+    scan_tx: &Arc<tokio::sync::Notify>,
+) {
+    let groups = match crate::db::list_groups(pool).await {
+        Ok(g) => g,
+        Err(e) => { warn!("group_failover: DB query failed: {}", e); return; }
+    };
+
+    // Nur Gruppen mit konfiguriertem Fallback
+    let groups: Vec<_> = groups.into_iter().filter(|g| g.fallback_gateway.is_some()).collect();
+    if groups.is_empty() { return; }
+
+    // Interface pro Gruppe aus der gateways-Tabelle laden
+    let all_gateways = match sqlx::query_as::<_, crate::db::Gateway>("SELECT * FROM gateways")
+        .fetch_all(pool).await {
+        Ok(gws) => gws,
+        Err(e) => { warn!("group_failover: gateways query failed: {}", e); return; }
+    };
+
+    let mut checked_ifaces: HashMap<String, bool> = HashMap::new();
+
+    for group in &groups {
+        let Some(gw) = all_gateways.iter().find(|g| g.name == group.gateway) else { continue; };
+        let iface = &gw.interface;
+
+        let now_up = if let Some(&cached) = checked_ifaces.get(iface) {
+            cached
+        } else {
+            let up = if iface == &cfg.gre_interface {
+                gre_now
+            } else {
+                http_check_through_interface(&cfg.check_url, Some(iface)).await
+            };
+            checked_ifaces.insert(iface.clone(), up);
+            up
+        };
+
+        let was_up = *iface_was_up.get(&format!("grp:{}", group.name)).unwrap_or(&true);
+
+        if was_up && !now_up && group.fallback_active == 0 {
+            warn!("Gruppen-Failover: Gruppe '{}' Gateway {} DOWN → Fallback", group.name, group.gateway);
+            let _ = insert_monitor_event(pool, "group_failover_active",
+                Some(&format!("{} ({})", group.name, group.gateway))).await;
+            if let Err(e) = crate::db::set_group_fallback(pool, &group.name, true).await {
+                warn!("group_failover activate failed: {}", e);
+            } else {
+                scan_tx.notify_one();
+            }
+        } else if !was_up && now_up && group.fallback_active != 0 {
+            info!("Gruppen-Failover: Gruppe '{}' Gateway {} UP → Wiederherstellen", group.name, group.gateway);
+            let _ = insert_monitor_event(pool, "group_failover_restored",
+                Some(&format!("{} ({})", group.name, group.gateway))).await;
+            if let Err(e) = crate::db::set_group_fallback(pool, &group.name, false).await {
+                warn!("group_failover restore failed: {}", e);
+            } else {
+                scan_tx.notify_one();
+            }
+        }
+
+        iface_was_up.insert(format!("grp:{}", group.name), now_up);
+    }
 }
 
 /// Schaltet Default-Route in allen GRE-Gateway-Tabellen auf ppp0 um
@@ -260,22 +331,25 @@ async fn get_ppp0_nexthop() -> Option<String> {
         })
 }
 
-/// Send one ping through a specific interface (or default routing)
-async fn ping_through_interface(host: &str, interface: Option<&str>) -> bool {
-    let mut args = vec!["-c", "1", "-W", "3", "-q"];
+/// HTTP-Connectivity-Check durch ein bestimmtes Interface.
+/// Nutzt curl --interface, da ICMP auf GRE/VPN-Interfaces oft geblockt ist.
+async fn http_check_through_interface(url: &str, interface: Option<&str>) -> bool {
+    let mut args = vec![
+        "--max-time", "5",
+        "--silent",
+        "--fail",
+        "--output", "/dev/null",
+    ];
     if let Some(iface) = interface {
-        args.push("-I");
+        args.push("--interface");
         args.push(iface);
     }
-    args.push(host);
+    args.push(url);
 
-    let result = Command::new("ping")
+    Command::new("curl")
         .args(&args)
         .output()
-        .await;
-
-    match result {
-        Ok(output) => output.status.success(),
-        Err(_) => false,
-    }
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }

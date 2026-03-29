@@ -331,38 +331,41 @@
   </div>
 
   <!-- Tab: Status -->
-  <div id="tab-status" style="display:none;padding:24px;max-width:600px">
-    <div style="display:flex;flex-direction:column;gap:16px">
-      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
-        <span class="dot unknown" id="dot-ppp0-status" style="width:18px;height:18px;flex-shrink:0"></span>
+  <div id="tab-status" style="display:none;padding:24px">
+    <div style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Uplinks</div>
+    <div style="display:flex;flex-direction:column;gap:12px;max-width:600px;margin-bottom:24px">
+      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-ppp0-status" style="width:16px;height:16px;flex-shrink:0"></span>
         <div>
-          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">ppp0</div>
-          <div style="font-size:0.82rem;color:#718096">DSL-Verbindung</div>
+          <div style="font-weight:700;font-size:0.95rem;color:#e2e8f0">ppp0</div>
+          <div style="font-size:0.8rem;color:#718096">DSL-Verbindung</div>
         </div>
-        <div id="ppp0-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+        <div id="ppp0-status-text" style="margin-left:auto;font-size:0.82rem;color:#a0aec0"></div>
       </div>
-      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
-        <span class="dot unknown" id="dot-gre" style="width:18px;height:18px;flex-shrink:0"></span>
+      <div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-gre" style="width:16px;height:16px;flex-shrink:0"></span>
         <div>
-          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">GRE Tunnel</div>
-          <div style="font-size:0.82rem;color:#718096" id="gre-nexthop-label">Fiber-Tunnel</div>
+          <div style="font-weight:700;font-size:0.95rem;color:#e2e8f0">GRE Tunnel</div>
+          <div style="font-size:0.8rem;color:#718096" id="gre-nexthop-label">Fiber-Tunnel</div>
         </div>
-        <div id="gre-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+        <div id="gre-status-text" style="margin-left:auto;font-size:0.82rem;color:#a0aec0"></div>
       </div>
-      <div id="stargate-card" style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
-        <span class="dot unknown" id="dot-stargate" style="width:18px;height:18px;flex-shrink:0"></span>
+      <div id="stargate-card" style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-stargate" style="width:16px;height:16px;flex-shrink:0"></span>
         <div>
-          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">Stargate</div>
-          <div style="font-size:0.82rem;color:#718096">Starlink-Uplink (VLAN 12)</div>
+          <div style="font-weight:700;font-size:0.95rem;color:#e2e8f0">Stargate</div>
+          <div style="font-size:0.8rem;color:#718096">Starlink-Uplink (VLAN 12)</div>
         </div>
-        <div id="stargate-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+        <div id="stargate-status-text" style="margin-left:auto;font-size:0.82rem;color:#a0aec0"></div>
         <div id="stargate-toggle" style="display:none;gap:6px">
           <button id="btn-stargate-on"  onclick="stargateSet('on')"  style="padding:4px 12px;background:#2f855a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:0.8rem">Ein</button>
           <button id="btn-stargate-off" onclick="stargateSet('off')" style="padding:4px 12px;background:#742a2a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:0.8rem">Aus</button>
         </div>
       </div>
-      <div style="font-size:0.76rem;color:#4a5568;text-align:right" id="status-last-check"></div>
     </div>
+    <div style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px">Gateways <span style="color:#2d3748;font-size:0.68rem;text-transform:none;letter-spacing:0">(24h Traffic)</span></div>
+    <div id="status-gateways" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:900px"></div>
+    <div style="font-size:0.76rem;color:#4a5568;text-align:right;margin-top:16px" id="status-last-check"></div>
   </div>
 </main>
 <div id="toast"></div>
@@ -370,6 +373,7 @@
 <script>
 let clients = [];
 let gateways = [];
+let groups = [];   // [{name, gateway, fallback_gateway, description, fallback_active}]
 let networks = {}; // subnet → {default_gateway, internal_only}
 let ifaces = [];   // [{name, role, enabled, gateways}]
 let trafficData = [];
@@ -452,7 +456,7 @@ function showTab(tab) {
   if (tab === 'netze') renderNetze();
   if (tab === 'ifaces') renderIfaces();
   if (tab === 'mullvad') renderMullvad();
-  if (tab === 'status') loadStargateStatus();
+  if (tab === 'status') { loadStargateStatus(); renderStatusGateways(); }
 }
 
 // --- API ---
@@ -466,7 +470,7 @@ async function apiFetch(url, opts) {
 async function loadAll() {
   const meR = await apiFetch('/api/me');
   if (meR) { const me = await meR.json(); userRole = me.role || 'viewer'; }
-  await Promise.all([loadStatus(), loadStargateStatus(), loadClients(), loadGateways(), loadTraffic(), loadEvents(), loadNetworks(), loadIfaces(), loadSettings()]);
+  await Promise.all([loadStatus(), loadStargateStatus(), loadClients(), loadGateways(), loadGroups(), loadTraffic(), loadEvents(), loadNetworks(), loadIfaces(), loadSettings()]);
   // Scan-Button nur für Admin
   const scanBtn = document.getElementById('btn-scan');
   if (scanBtn) scanBtn.style.display = isAdmin() ? '' : 'none';
@@ -545,6 +549,41 @@ async function stargateSet(action) {
   }
 }
 
+function renderStatusGateways() {
+  const el = document.getElementById('status-gateways');
+  if (!el) return;
+  const filtered = gateways.filter(g => g.name !== 'nointernet' && ifaces.some(i => i.name === g.interface));
+  if (!filtered.length) {
+    el.innerHTML = '<span style="color:#4a5568;font-size:0.82rem">Keine Gateways konfiguriert</span>';
+    return;
+  }
+  // Sum extern traffic per gateway from trafficData
+  const gwTraffic = {};
+  for (const r of trafficData) {
+    if (!gwTraffic[r.gateway]) gwTraffic[r.gateway] = { in: 0, out: 0 };
+    gwTraffic[r.gateway].in  += Math.max(0, r.bytes_in  - (r.bytes_in_intern  || 0));
+    gwTraffic[r.gateway].out += Math.max(0, r.bytes_out - (r.bytes_out_intern || 0));
+  }
+  el.innerHTML = filtered.map(gw => {
+    const ifaceUp = ifaces.some(i => i.name === gw.interface);
+    const dotClass = 'dot ' + (ifaceUp ? 'up' : 'down');
+    const label = gw.description || gw.name;
+    const clientCount = clients.filter(c => c.gateway === gw.name && c.active).length;
+    const traf = gwTraffic[gw.name];
+    const trafficHtml = traf
+      ? `<div style="font-size:0.78rem;white-space:nowrap"><span class="traffic-in">&#8595;${fmtBytes(traf.in)}</span> <span class="traffic-out">&#8593;${fmtBytes(traf.out)}</span></div>`
+      : `<div style="font-size:0.78rem;color:#4a5568">–</div>`;
+    return `<div style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+      <span class="${dotClass}" style="width:13px;height:13px;flex-shrink:0"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:0.88rem;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(label)}">${esc(label)}</div>
+        <div style="font-size:0.74rem;color:#718096">${esc(gw.interface)} · ${clientCount} Client${clientCount !== 1 ? 's' : ''}</div>
+      </div>
+      ${trafficHtml}
+    </div>`;
+  }).join('');
+}
+
 async function loadClients() {
   try {
     const r = await apiFetch('/api/clients');
@@ -562,6 +601,16 @@ async function loadGateways() {
     gateways = await r.json();
     renderAll();
     if (currentTab === 'netze') renderNetze();
+    if (currentTab === 'status') renderStatusGateways();
+  } catch(e) {}
+}
+
+async function loadGroups() {
+  try {
+    const r = await apiFetch('/api/groups');
+    if (!r) return;
+    groups = await r.json() || [];
+    if (currentView === 'group') renderAll();
   } catch(e) {}
 }
 
@@ -617,6 +666,7 @@ async function loadTraffic() {
     window._trafficMap = trafficMap;
     renderAll();
     renderTrafficSummary(trafficData);
+    if (currentTab === 'status') renderStatusGateways();
   } catch(e) {}
 }
 
@@ -641,6 +691,7 @@ async function loadIfaces() {
     ifaces = await r.json() || [];
     if (currentTab === 'ifaces') renderIfaces();
     if (currentTab === 'netze') renderNetze(); // refresh interface badges
+    if (currentTab === 'status') renderStatusGateways();
   } catch(e) {}
 }
 
@@ -748,14 +799,14 @@ function renderGatewayView(filtered) {
 function renderGroupView(filtered) {
   const container = document.getElementById('sections-container');
 
-  const groups = {};
+  const groupMap = {};
   for (const c of filtered) {
     const key = c.group_name || '(keine Gruppe)';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(c);
+    if (!groupMap[key]) groupMap[key] = [];
+    groupMap[key].push(c);
   }
 
-  const sorted = Object.keys(groups).sort((a, b) => {
+  const sorted = Object.keys(groupMap).sort((a, b) => {
     if (a === '(keine Gruppe)') return 1;
     if (b === '(keine Gruppe)') return -1;
     return a.localeCompare(b);
@@ -764,16 +815,46 @@ function renderGroupView(filtered) {
   const collapsed = new Set();
   container.querySelectorAll('.gw-section.collapsed').forEach(el => collapsed.add(el.dataset.key));
 
-  const sectionsHtml = sorted.map(grp => {
-    const grpClients = groups[grp];
-    const isCollapsed = collapsed.has(grp) ? 'collapsed' : '';
+  const gwOptions = gateways.filter(g => g.name !== 'nointernet')
+    .map(g => `<option value="${esc(g.name)}">${esc(g.description || g.name)}</option>`).join('');
+
+  const sectionsHtml = sorted.map(grpName => {
+    const grpClients = groupMap[grpName];
+    const isCollapsed = collapsed.has(grpName) ? 'collapsed' : '';
+    const grpData = groups.find(g => g.name === grpName);
+    const isRealGroup = grpName !== '(keine Gruppe)';
+
+    let groupControls = '';
+    if (isRealGroup && isAdmin()) {
+      const curGw = grpData?.gateway || '';
+      const curFb = grpData?.fallback_gateway || '';
+      const isFallback = grpData?.fallback_active;
+      const fbIndicator = isFallback
+        ? `<span style="color:#fc8181;font-size:0.72rem;margin-left:6px">⚡ Fallback aktiv</span>` : '';
+      groupControls = `
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto" onclick="event.stopPropagation()">
+          ${fbIndicator}
+          <select style="background:#0d1117;border:1px solid #2d3748;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:0.75rem"
+            onchange="setGroupGateway('${esc(grpName)}', this.value, '${esc(curFb)}')" title="Gateway">
+            <option value="">– Gateway –</option>${gwOptions}
+          </select>
+          <select style="background:#0d1117;border:1px solid #2d3748;color:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:0.75rem"
+            onchange="setGroupGateway('${esc(grpName)}', '${esc(curGw)}', this.value)" title="Fallback">
+            <option value="">– Fallback –</option>${gwOptions}
+          </select>
+        </div>`;
+      // Set current values after render via data attributes
+    }
+
     return `
-    <div class="gw-section ${isCollapsed}" data-key="${esc(grp)}">
+    <div class="gw-section ${isCollapsed}" data-key="${esc(grpName)}"
+         data-grp-gw="${esc(grpData?.gateway||'')}" data-grp-fb="${esc(grpData?.fallback_gateway||'')}">
       <div class="gw-section-header" onclick="toggleSection(this.parentElement)">
         <span class="toggle-arrow">&#9660;</span>
-        <span class="gw-title">${esc(grp)}</span>
-        <span class="gw-desc"></span>
+        <span class="gw-title">${esc(grpName)}</span>
+        <span class="gw-desc">${grpData?.description ? esc(grpData.description) : ''}</span>
         <span class="gw-count">${grpClients.length}</span>
+        ${groupControls}
       </div>
       <div class="gw-body">
         ${renderClientTable(grpClients)}
@@ -782,6 +863,35 @@ function renderGroupView(filtered) {
   }).join('');
 
   container.innerHTML = sectionsHtml;
+
+  // Set select values after DOM insert
+  container.querySelectorAll('.gw-section[data-grp-gw]').forEach(sec => {
+    const gw = sec.dataset.grpGw;
+    const fb = sec.dataset.grpFb;
+    const selects = sec.querySelectorAll('select');
+    if (selects[0] && gw) selects[0].value = gw;
+    if (selects[1] && fb) selects[1].value = fb;
+  });
+}
+
+async function setGroupGateway(name, gateway, fallback_gateway) {
+  if (!gateway) return;
+  try {
+    const r = await apiFetch(`/api/groups/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gateway, fallback_gateway: fallback_gateway || null })
+    });
+    if (!r) return;
+    if (r.ok) {
+      showToast(`Gruppe ${name}: Gateway → ${gateway}${fallback_gateway ? ', Fallback → ' + fallback_gateway : ''}`);
+      await loadGroups();
+      await loadClients();
+    } else {
+      const d = await r.json();
+      showToast('Fehler: ' + (d.error || r.status), true);
+    }
+  } catch(e) { showToast('Fehler: ' + e.message, true); }
 }
 
 function renderClientTable(clientList) {
@@ -824,19 +934,28 @@ function renderClientTable(clientList) {
           ${dnsSelect('dns-c-'+c.ip.replace(/\./g,'_'), c.dns_ip||'', `setClientDns('${esc(c.ip)}', this.value)`)}
         </div>`
       : `${displayName}${subLabel}`;
+    // Indikatoren: per-Client-Fallback aktiv oder Gruppen-Fallback aktiv
+    const grpData = c.group_name ? groups.find(g => g.name === c.group_name) : null;
     const fallbackIndicator = c.original_gateway
-      ? `<span title="Fallback aktiv – urspr. Gateway: ${esc(c.original_gateway)}" style="color:#f6ad55;font-size:0.7rem;margin-left:4px">⚡ppp0</span>`
+      ? `<span title="Autofallback aktiv – normal: ${esc(c.original_gateway)}" style="color:#f6ad55;font-size:0.7rem;margin-left:2px">⚡${esc(c.gateway)}</span>`
       : '';
+    const grpFallbackIndicator = !c.original_gateway && grpData && grpData.fallback_gateway
+      ? grpData.fallback_active
+        ? `<span title="Gruppen-Fallback aktiv – normal: ${esc(grpData.gateway)}" style="color:#f6ad55;font-size:0.7rem;margin-left:2px">⚡${esc(c.gateway)}</span>`
+        : `<span title="Gruppen-Fallback bereit → ${esc(grpData.fallback_gateway)}" style="color:#4a5568;font-size:0.7rem;margin-left:2px">↩${esc(grpData.fallback_gateway)}</span>`
+      : '';
+    // Fallback-Dropdown: leer = kein Fallback, Gateway-Name = Fallback-Ziel
+    const fbOptions = `<option value=""${!c.autofallback?' selected':''}>–</option>`
+      + gateways.filter(g => g.name !== c.gateway)
+          .map(g => `<option value="${g.name}"${c.fallback_gateway===g.name?' selected':''}>${g.name}</option>`)
+          .join('');
     const gatewayCell = isAdmin()
       ? `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
            <select onchange="setGateway('${esc(c.ip)}', this.value)">${selOptions}</select>
-           <label title="Autofallback: bei Ausfall automatisch auf ppp0 schwenken" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:0.75rem;color:#718096;white-space:nowrap">
-             <input type="checkbox" ${c.autofallback ? 'checked' : ''} onchange="setAutofallback('${esc(c.ip)}', this.checked)" style="cursor:pointer;accent-color:#63b3ed">
-             FB
-           </label>
-           ${fallbackIndicator}
+           <select title="Autofallback-Ziel (leer = kein Fallback)" onchange="setAutofallback('${esc(c.ip)}', this.value)" style="font-size:0.75rem;padding:1px 4px">${fbOptions}</select>
+           ${fallbackIndicator}${grpFallbackIndicator}
          </div>`
-      : `<span style="color:#a0aec0;font-size:0.85rem">${esc(c.gateway)}${fallbackIndicator}</span>`;
+      : `<span style="color:#a0aec0;font-size:0.85rem">${esc(c.gateway)}${fallbackIndicator}${grpFallbackIndicator}</span>`;
 
     return `<tr>
       <td><span class="ip">${esc(c.ip)}</span>${ipv6Cell}<div class="mac">${esc(c.mac||'')}</div></td>
@@ -1170,19 +1289,22 @@ async function setGateway(ip, gw) {
   } catch(e) { toast('Netzwerkfehler', true); }
 }
 
-async function setAutofallback(ip, enabled) {
+async function setAutofallback(ip, fallback_gateway) {
   try {
     const r = await apiFetch(`/api/clients/${encodeURIComponent(ip)}/autofallback`, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({autofallback: enabled})
+      body: JSON.stringify({fallback_gateway: fallback_gateway || ''})
     });
     if (!r) return;
     const d = await r.json();
     if (d.ok) {
       const idx = clients.findIndex(c => c.ip === ip);
-      if (idx >= 0) clients[idx].autofallback = enabled ? 1 : 0;
-      toast(`${ip} autofallback ${enabled ? 'aktiviert' : 'deaktiviert'}`);
+      if (idx >= 0) {
+        clients[idx].autofallback = fallback_gateway ? 1 : 0;
+        clients[idx].fallback_gateway = fallback_gateway || null;
+      }
+      toast(`${ip} Fallback: ${fallback_gateway || 'deaktiviert'}`);
       renderAll();
     } else {
       toast('Fehler: ' + (d.error||'unbekannt'), true);

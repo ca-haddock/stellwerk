@@ -58,12 +58,16 @@ pub async fn run_traffic_loop(pool: sqlx::SqlitePool, cfg: InfluxDbConfig) {
             let bytes_out_intern = counters.iter().find(|c| c.name == format!("{}_out_intern", cn)).map(|c| c.bytes).unwrap_or(0);
             let bytes_out_extern = counters.iter().find(|c| c.name == format!("{}_out_extern", cn)).map(|c| c.bytes).unwrap_or(0);
 
+            // nftables-Counter werden bei jedem apply_routing() auf 0 zurückgesetzt.
+            // Wenn current < prev → Reset erkannt → current direkt als Delta nehmen.
+            let delta = |cur: u64, p: u64| -> u64 { if cur >= p { cur - p } else { cur } };
+
             let (di_intern, di_extern, do_intern, do_extern) = if let Some(p) = prev.get(&client.ip) {
                 (
-                    bytes_in_intern.saturating_sub(p.bytes_in_intern),
-                    bytes_in_extern.saturating_sub(p.bytes_in_extern),
-                    bytes_out_intern.saturating_sub(p.bytes_out_intern),
-                    bytes_out_extern.saturating_sub(p.bytes_out_extern),
+                    delta(bytes_in_intern, p.bytes_in_intern),
+                    delta(bytes_in_extern, p.bytes_in_extern),
+                    delta(bytes_out_intern, p.bytes_out_intern),
+                    delta(bytes_out_extern, p.bytes_out_extern),
                 )
             } else {
                 // First measurement – don't store yet (could be a large accumulated value)

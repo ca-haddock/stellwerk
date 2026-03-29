@@ -90,6 +90,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/mullvad/connections", get(routes::mullvad_connections))
         .route("/api/mullvad/key", get(routes::mullvad_key_status))
         .route("/api/mullvad/devices", get(routes::mullvad_list_devices))
+        .route("/api/groups", get(routes::list_groups))
         .route("/api/logout", post(routes::logout))
         .layer(middleware::from_fn_with_state(state.clone(), require_auth));
 
@@ -112,6 +113,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/mullvad/:cc", delete(routes::mullvad_disconnect))
         .route("/api/stargate/on", post(routes::stargate_on))
         .route("/api/stargate/off", post(routes::stargate_off))
+        .route("/api/groups/:name", put(routes::upsert_group))
+        .route("/api/groups/:name", delete(routes::delete_group))
+        .route("/api/groups/:name/apply", post(routes::apply_group_gateway))
         .layer(middleware::from_fn_with_state(state.clone(), require_write));
 
     Router::new()

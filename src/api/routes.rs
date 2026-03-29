@@ -173,7 +173,8 @@ pub async fn set_group(
 
 #[derive(Deserialize)]
 pub struct SetAutofallbackBody {
-    pub autofallback: bool,
+    /// Leer / null = kein Fallback; Gateway-Name = Fallback auf dieses Gateway aktivieren
+    pub fallback_gateway: Option<String>,
 }
 
 pub async fn set_autofallback(
@@ -181,8 +182,9 @@ pub async fn set_autofallback(
     Path(ip): Path<String>,
     Json(body): Json<SetAutofallbackBody>,
 ) -> impl IntoResponse {
-    match db::set_client_autofallback(&state.pool, &ip, body.autofallback).await {
-        Ok(true) => (StatusCode::OK, Json(json!({ "ok": true, "autofallback": body.autofallback }))).into_response(),
+    let fb = body.fallback_gateway.as_deref().filter(|s| !s.is_empty());
+    match db::set_client_autofallback(&state.pool, &ip, fb).await {
+        Ok(true) => (StatusCode::OK, Json(json!({ "ok": true, "fallback_gateway": fb }))).into_response(),
         Ok(false) => (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" }))).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
     }
@@ -531,6 +533,10 @@ pub async fn wg_sync(State(state): State<AppState>) -> Json<Value> {
         }
         // Nur auto-angelegte: name == interface
         if gw.name != gw.interface {
+            continue;
+        }
+        // Nur WireGuard-Interfaces – ppp0, eth0 etc. nie entfernen
+        if !crate::mullvad::is_wireguard_interface(&gw.interface).await {
             continue;
         }
         // Noch aktiv?

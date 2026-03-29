@@ -108,8 +108,10 @@ impl Default for AuthConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MonitoringConfig {
     pub check_interval_secs: u64,
-    pub ppp0_check_host: String,
-    pub gre_check_host: String,
+    /// URL für HTTP-Connectivity-Check (curl --interface <iface> <url>).
+    /// Muss via Internet erreichbar sein und 200 zurückgeben.
+    #[serde(default = "MonitoringConfig::default_check_url")]
+    pub check_url: String,
     /// GRE→ppp0 Failover: bei GRE-Ausfall Default-Route in GRE-Tabellen auf ppp0 umschalten
     #[serde(default)]
     pub gre_failover_enabled: bool,
@@ -119,9 +121,15 @@ pub struct MonitoringConfig {
     /// Nexthop-IP für GRE-Default-Route (default: "172.16.10.1")
     #[serde(default = "MonitoringConfig::default_gre_nexthop")]
     pub gre_nexthop: String,
+    // Legacy-Felder – werden nicht mehr verwendet, aber ignoriert beim Parsen
+    #[serde(default)]
+    pub ppp0_check_host: String,
+    #[serde(default)]
+    pub gre_check_host: String,
 }
 
 impl MonitoringConfig {
+    fn default_check_url() -> String { "https://api.ipify.org".to_string() }
     fn default_gre_interface() -> String { "gre_fiber".to_string() }
     fn default_gre_nexthop() -> String { "172.16.10.1".to_string() }
 }
@@ -130,11 +138,12 @@ impl Default for MonitoringConfig {
     fn default() -> Self {
         Self {
             check_interval_secs: 30,
-            ppp0_check_host: "8.8.8.8".to_string(),
-            gre_check_host: "1.1.1.1".to_string(),
+            check_url: "https://api.ipify.org".to_string(),
             gre_failover_enabled: false,
             gre_interface: "gre_fiber".to_string(),
             gre_nexthop: "172.16.10.1".to_string(),
+            ppp0_check_host: String::new(),
+            gre_check_host: String::new(),
         }
     }
 }
