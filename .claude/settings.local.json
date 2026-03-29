@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(systemctl status:*)",
+      "Read(//home/stellwerk/**)",
+      "Bash(~/.cargo/bin/cargo build:*)",
+      "Bash(sudo journalctl:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

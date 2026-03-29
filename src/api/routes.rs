@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, StatusCode},
     response::{Html, IntoResponse, Json},
 };
@@ -36,10 +36,51 @@ pub async fn get_status(State(state): State<AppState>) -> Json<Value> {
     }))
 }
 
+// --- Stargate ---
+
+pub async fn get_stargate_status(State(state): State<AppState>) -> Json<Value> {
+    let Some(ref ha) = state.ha_client else {
+        return Json(json!({ "state": "unconfigured" }));
+    };
+    match ha.get_starlink_state().await {
+        Ok(s) => Json(json!({ "state": s })),
+        Err(e) => Json(json!({ "state": "error", "error": e.to_string() })),
+    }
+}
+
+pub async fn stargate_on(State(state): State<AppState>) -> impl IntoResponse {
+    let Some(ref ha) = state.ha_client else {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({ "error": "HomeAssistant nicht konfiguriert" }))).into_response();
+    };
+    match ha.turn_on_starlink().await {
+        Ok(()) => (StatusCode::OK, Json(json!({ "ok": true }))).into_response(),
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
+pub async fn stargate_off(State(state): State<AppState>) -> impl IntoResponse {
+    let Some(ref ha) = state.ha_client else {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({ "error": "HomeAssistant nicht konfiguriert" }))).into_response();
+    };
+    match ha.turn_off_starlink().await {
+        Ok(()) => (StatusCode::OK, Json(json!({ "ok": true }))).into_response(),
+        Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
 // --- Clients ---
 
-pub async fn list_clients(State(state): State<AppState>) -> Json<Value> {
-    match db::list_clients(&state.pool).await {
+#[derive(Deserialize, Default)]
+pub struct ClientFilter {
+    pub group: Option<String>,
+    pub gateway: Option<String>,
+}
+
+pub async fn list_clients(
+    State(state): State<AppState>,
+    Query(filter): Query<ClientFilter>,
+) -> Json<Value> {
+    match db::list_clients_filtered(&state.pool, filter.group.as_deref(), filter.gateway.as_deref()).await {
         Ok(clients) => Json(json!(clients)),
         Err(e) => Json(json!({ "error": e.to_string() })),
     }
@@ -714,9 +755,9 @@ pub async fn mullvad_connect(
 
     // Register gateway in DB
     let iface = crate::mullvad::interface_name(cc);
-    let gw_name = iface.clone();
+    let gw_name = format!("{}-{}", device_name, cc);
     let description = format!("Mullvad {} ({})", cc.to_uppercase(), device_name);
-    if let Err(e) = db::upsert_gateway(&state.pool, &gw_name, &gw_name, &iface, None, &description, mark, Some(&device_name)).await {
+    if let Err(e) = db::upsert_gateway(&state.pool, &gw_name, &iface, &iface, None, &description, mark, Some(&device_name)).await {
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response();
     }
 
@@ -743,11 +784,11 @@ pub async fn mullvad_disconnect(
 ) -> impl IntoResponse {
     let cc = cc.to_lowercase();
     let cc = cc.trim();
-    let gw_name = crate::mullvad::interface_name(cc);
+    let iface = crate::mullvad::interface_name(cc);
 
     // Remove clients from this gateway → fallback to default
     if let Ok(clients) = db::list_clients(&state.pool).await {
-        for c in clients.iter().filter(|c| c.gateway == gw_name) {
+        for c in clients.iter().filter(|c| c.gateway.ends_with(&format!("-{}", cc))) {
             let _ = db::set_client_gateway(&state.pool, &c.ip, &state.default_gw).await;
         }
     }
@@ -755,9 +796,9 @@ pub async fn mullvad_disconnect(
     // Bring down interface
     crate::mullvad::bring_down(cc).await.ok();
 
-    // Remove gateway from DB
-    let _ = sqlx::query("DELETE FROM gateways WHERE name = ?1")
-        .bind(&gw_name)
+    // Remove gateway from DB (by interface, since name now includes device_name)
+    let _ = sqlx::query("DELETE FROM gateways WHERE interface = ?1")
+        .bind(&iface)
         .execute(&state.pool)
         .await;
 
@@ -767,10 +808,68 @@ pub async fn mullvad_disconnect(
 
     // Interface-Meta entfernen
     let _ = sqlx::query("DELETE FROM interface_meta WHERE name = ?1")
-        .bind(&gw_name)
+        .bind(&iface)
         .execute(&state.pool)
         .await;
 
     state.scan_tx.notify_one();
     (StatusCode::OK, Json(json!({ "ok": true }))).into_response()
+}
+
+// --- Groups ---
+
+pub async fn list_groups(State(state): State<AppState>) -> Json<Value> {
+    match db::list_groups(&state.pool).await {
+        Ok(groups) => Json(json!(groups)),
+        Err(e) => Json(json!({ "error": e.to_string() })),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct UpsertGroupBody {
+    pub gateway: String,
+    pub fallback_gateway: Option<String>,
+    pub description: Option<String>,
+}
+
+pub async fn upsert_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<UpsertGroupBody>,
+) -> impl IntoResponse {
+    let fb = body.fallback_gateway.as_deref().filter(|s| !s.is_empty());
+    let desc = body.description.as_deref().filter(|s| !s.is_empty());
+    if let Err(e) = db::upsert_group(&state.pool, &name, &body.gateway, fb, desc).await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response();
+    }
+    // Gateway sofort auf alle Clients in dieser Gruppe anwenden
+    let _ = db::apply_group_gateway(&state.pool, &name, &body.gateway).await;
+    state.scan_tx.notify_one();
+    (StatusCode::OK, Json(json!({ "ok": true }))).into_response()
+}
+
+pub async fn delete_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    match db::delete_group(&state.pool, &name).await {
+        Ok(true) => (StatusCode::OK, Json(json!({ "ok": true }))).into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" }))).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
+pub async fn apply_group_gateway(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> impl IntoResponse {
+    // Gruppe laden und Gateway auf alle Clients anwenden
+    let groups = db::list_groups(&state.pool).await.unwrap_or_default();
+    let Some(g) = groups.iter().find(|g| g.name == name) else {
+        return (StatusCode::NOT_FOUND, Json(json!({ "error": "group not found" }))).into_response();
+    };
+    let gw = g.gateway.clone();
+    let count = db::apply_group_gateway(&state.pool, &name, &gw).await.unwrap_or(0);
+    state.scan_tx.notify_one();
+    (StatusCode::OK, Json(json!({ "ok": true, "updated": count }))).into_response()
 }

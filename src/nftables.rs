@@ -102,7 +102,7 @@ pub fn build_ruleset(clients: &[Client], gateways: &[Gateway], networks: &[Netwo
 
     // Inbound accounting: count bytes arriving per client, split intern/extern
     lines.push("  chain accounting_in {".to_string());
-    lines.push("    type filter hook prerouting priority mangle + 5; policy accept;".to_string());
+    lines.push("    type filter hook prerouting priority dstnat + 5; policy accept;".to_string());
     for client in clients {
         if client.active == 0 {
             continue;

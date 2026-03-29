@@ -198,8 +198,8 @@ pub async fn configure_unbound(dns: &DnsConfig, gateways: &[Gateway]) -> Result<
 
     tokio::fs::write(UNBOUND_STELLWERK_CONF, &content).await?;
 
-    let status = tokio::process::Command::new("sudo")
-        .args(["systemctl", "restart", "unbound"])
+    let status = tokio::process::Command::new("systemctl")
+        .args(["restart", "unbound"])
         .status()
         .await?;
 

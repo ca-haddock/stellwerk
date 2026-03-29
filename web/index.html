@@ -349,6 +349,18 @@
         </div>
         <div id="gre-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
       </div>
+      <div id="stargate-card" style="background:#1a1f2e;border:1px solid #2d3748;border-radius:8px;padding:20px;display:flex;align-items:center;gap:16px">
+        <span class="dot unknown" id="dot-stargate" style="width:18px;height:18px;flex-shrink:0"></span>
+        <div>
+          <div style="font-weight:700;font-size:1rem;color:#e2e8f0">Stargate</div>
+          <div style="font-size:0.82rem;color:#718096">Starlink-Uplink (VLAN 12)</div>
+        </div>
+        <div id="stargate-status-text" style="margin-left:auto;font-size:0.85rem;color:#a0aec0"></div>
+        <div id="stargate-toggle" style="display:none;gap:6px">
+          <button id="btn-stargate-on"  onclick="stargateSet('on')"  style="padding:4px 12px;background:#2f855a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:0.8rem">Ein</button>
+          <button id="btn-stargate-off" onclick="stargateSet('off')" style="padding:4px 12px;background:#742a2a;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:0.8rem">Aus</button>
+        </div>
+      </div>
       <div style="font-size:0.76rem;color:#4a5568;text-align:right" id="status-last-check"></div>
     </div>
   </div>
@@ -440,6 +452,7 @@ function showTab(tab) {
   if (tab === 'netze') renderNetze();
   if (tab === 'ifaces') renderIfaces();
   if (tab === 'mullvad') renderMullvad();
+  if (tab === 'status') loadStargateStatus();
 }
 
 // --- API ---
@@ -453,7 +466,7 @@ async function apiFetch(url, opts) {
 async function loadAll() {
   const meR = await apiFetch('/api/me');
   if (meR) { const me = await meR.json(); userRole = me.role || 'viewer'; }
-  await Promise.all([loadStatus(), loadClients(), loadGateways(), loadTraffic(), loadEvents(), loadNetworks(), loadIfaces(), loadSettings()]);
+  await Promise.all([loadStatus(), loadStargateStatus(), loadClients(), loadGateways(), loadTraffic(), loadEvents(), loadNetworks(), loadIfaces(), loadSettings()]);
   // Scan-Button nur für Admin
   const scanBtn = document.getElementById('btn-scan');
   if (scanBtn) scanBtn.style.display = isAdmin() ? '' : 'none';
@@ -484,6 +497,52 @@ async function loadStatus() {
     if (d.dns_servers) dnsServers = d.dns_servers; // [[name, ip], ...]
     mullvadConfigured = !!d.mullvad_configured;
   } catch(e) {}
+}
+
+async function loadStargateStatus() {
+  try {
+    const r = await apiFetch('/api/stargate/status');
+    if (!r) return;
+    const d = await r.json();
+    const state = d.state;
+    const dot = document.getElementById('dot-stargate');
+    const text = document.getElementById('stargate-status-text');
+    const toggle = document.getElementById('stargate-toggle');
+    if (state === 'on') {
+      dot.className = 'dot up';
+      text.textContent = 'Online';
+    } else if (state === 'off') {
+      dot.className = 'dot down';
+      text.textContent = 'Offline';
+    } else if (state === 'unconfigured') {
+      dot.className = 'dot unknown';
+      text.textContent = 'HA nicht konfiguriert';
+    } else {
+      dot.className = 'dot unknown';
+      text.textContent = state;
+    }
+    if (toggle) toggle.style.display = (isAdmin() && state !== 'unconfigured') ? 'flex' : 'none';
+  } catch(e) {}
+}
+
+async function stargateSet(action) {
+  const btn = document.getElementById(action === 'on' ? 'btn-stargate-on' : 'btn-stargate-off');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await apiFetch('/api/stargate/' + action, { method: 'POST' });
+    if (!r) return;
+    if (r.ok) {
+      showToast('Stargate ' + (action === 'on' ? 'eingeschaltet' : 'ausgeschaltet'));
+      setTimeout(loadStargateStatus, 2000);
+    } else {
+      const d = await r.json();
+      showToast('Fehler: ' + (d.error || r.status), true);
+    }
+  } catch(e) {
+    showToast('Fehler: ' + e.message, true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function loadClients() {

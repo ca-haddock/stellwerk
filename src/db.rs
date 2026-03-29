@@ -60,6 +60,15 @@ pub struct NetworkConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct Group {
+    pub name: String,
+    pub gateway: String,
+    pub fallback_gateway: Option<String>,
+    pub description: Option<String>,
+    pub fallback_active: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct TrafficRecord {
     pub ip: String,
     pub gateway: String,
@@ -200,6 +209,18 @@ async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         .execute(pool)
         .await
         .ok();
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS groups (
+            name             TEXT PRIMARY KEY,
+            gateway          TEXT NOT NULL,
+            fallback_gateway TEXT,
+            description      TEXT,
+            fallback_active  INTEGER NOT NULL DEFAULT 0
+        )"
+    )
+    .execute(pool)
+    .await
+    .ok();
 
     Ok(())
 }
@@ -319,6 +340,42 @@ pub async fn list_clients(pool: &SqlitePool) -> Result<Vec<Client>> {
     let clients = sqlx::query_as::<_, Client>("SELECT * FROM clients ORDER BY ip")
         .fetch_all(pool)
         .await?;
+    Ok(clients)
+}
+
+pub async fn list_clients_filtered(
+    pool: &SqlitePool,
+    group: Option<&str>,
+    gateway: Option<&str>,
+) -> Result<Vec<Client>> {
+    let clients = match (group, gateway) {
+        (None, None) => {
+            sqlx::query_as::<_, Client>("SELECT * FROM clients ORDER BY ip")
+                .fetch_all(pool)
+                .await?
+        }
+        (Some(g), None) => {
+            sqlx::query_as::<_, Client>("SELECT * FROM clients WHERE group_name = ?1 ORDER BY ip")
+                .bind(g)
+                .fetch_all(pool)
+                .await?
+        }
+        (None, Some(gw)) => {
+            sqlx::query_as::<_, Client>("SELECT * FROM clients WHERE gateway = ?1 ORDER BY ip")
+                .bind(gw)
+                .fetch_all(pool)
+                .await?
+        }
+        (Some(g), Some(gw)) => {
+            sqlx::query_as::<_, Client>(
+                "SELECT * FROM clients WHERE group_name = ?1 AND gateway = ?2 ORDER BY ip",
+            )
+            .bind(g)
+            .bind(gw)
+            .fetch_all(pool)
+            .await?
+        }
+    };
     Ok(clients)
 }
 
@@ -680,4 +737,80 @@ pub async fn delete_mullvad_device(pool: &SqlitePool, name: &str) -> Result<bool
         .execute(pool)
         .await?;
     Ok(result.rows_affected() > 0)
+}
+
+// --- Groups ---
+
+pub async fn list_groups(pool: &SqlitePool) -> Result<Vec<Group>> {
+    let groups = sqlx::query_as::<_, Group>(
+        "SELECT name, gateway, fallback_gateway, description, fallback_active FROM groups ORDER BY name"
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(groups)
+}
+
+pub async fn upsert_group(pool: &SqlitePool, name: &str, gateway: &str, fallback_gateway: Option<&str>, description: Option<&str>) -> Result<()> {
+    sqlx::query(
+        "INSERT INTO groups (name, gateway, fallback_gateway, description, fallback_active)
+         VALUES (?1, ?2, ?3, ?4, 0)
+         ON CONFLICT(name) DO UPDATE SET gateway = ?2, fallback_gateway = ?3, description = ?4"
+    )
+    .bind(name)
+    .bind(gateway)
+    .bind(fallback_gateway)
+    .bind(description)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn delete_group(pool: &SqlitePool, name: &str) -> Result<bool> {
+    let result = sqlx::query("DELETE FROM groups WHERE name = ?1")
+        .bind(name)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Schreibt den Gateway einer Gruppe auf alle Clients in der Gruppe.
+pub async fn apply_group_gateway(pool: &SqlitePool, group_name: &str, gateway: &str) -> Result<u64> {
+    let result = sqlx::query("UPDATE clients SET gateway = ?1 WHERE group_name = ?2")
+        .bind(gateway)
+        .bind(group_name)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected())
+}
+
+/// Setzt fallback_active für eine Gruppe und schaltet alle Clients auf den entsprechenden Gateway.
+pub async fn set_group_fallback(pool: &SqlitePool, group_name: &str, active: bool) -> Result<()> {
+    let group = sqlx::query_as::<_, Group>(
+        "SELECT name, gateway, fallback_gateway, description, fallback_active FROM groups WHERE name = ?1"
+    )
+    .bind(group_name)
+    .fetch_optional(pool)
+    .await?;
+
+    let Some(g) = group else { return Ok(()); };
+
+    let target_gw = if active {
+        g.fallback_gateway.as_deref().unwrap_or(&g.gateway).to_string()
+    } else {
+        g.gateway.clone()
+    };
+
+    sqlx::query("UPDATE clients SET gateway = ?1 WHERE group_name = ?2")
+        .bind(&target_gw)
+        .bind(group_name)
+        .execute(pool)
+        .await?;
+
+    sqlx::query("UPDATE groups SET fallback_active = ?1 WHERE name = ?2")
+        .bind(active as i64)
+        .bind(group_name)
+        .execute(pool)
+        .await?;
+
+    Ok(())
 }
